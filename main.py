@@ -15,10 +15,13 @@ import time
 import uuid
 from typing import Optional
 
+from a2wsgi import WSGIMiddleware
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from huiswerk.app import app as huiswerk_wsgi_app
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "lesbord.db")
@@ -113,15 +116,27 @@ def _is_ingelogd(request: Request) -> bool:
     return bool(token) and hmac.compare_digest(token, _verwacht_token())
 
 
+def _naar_login(path: str) -> RedirectResponse:
+    """Redirect naar de wachtwoordpagina, prefix-onafhankelijk.
+
+    Berekent hoeveel mappen diep het verzoek zit en klimt met ``../`` terug
+    naar de app-root. Werkt zo zowel op de root, onder een nginx-subpad
+    (/lesbord/…) als vanuit de gemounte huiswerk-app (/huiswerk/…).
+    """
+    dirpad = path if path.endswith("/") else path.rsplit("/", 1)[0] + "/"
+    omhoog = len([s for s in dirpad.split("/") if s])
+    return RedirectResponse("../" * omhoog + "login", status_code=303)
+
+
 @app.middleware("http")
 async def auth_gate(request: Request, call_next):
     path = request.url.path
     if path in PUBLIEKE_PADEN or _is_ingelogd(request):
         return await call_next(request)
-    if path.startswith("/api/"):
+    # API-verzoeken (ook /huiswerk/api/…) krijgen 401 i.p.v. een redirect.
+    if "/api/" in path:
         return JSONResponse({"detail": "Niet ingelogd"}, status_code=401)
-    # Browser-navigatie -> naar de wachtwoordpagina (relatief i.v.m. subpad).
-    return RedirectResponse("login", status_code=303)
+    return _naar_login(path)
 
 
 class LoginIn(BaseModel):

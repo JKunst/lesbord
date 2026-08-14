@@ -72,8 +72,25 @@ anders kloppen de relatieve paden niet. De redirect hierboven vangt dat af.
 
 ### Beveiliging
 
-Er zit géén authenticatie in deze v1. Zet er iets voor, bijvoorbeeld
-basic auth in nginx:
+Er zit een eenvoudige **wachtwoordpagina** vóór het lesbord (één gedeeld
+wachtwoord, geen accounts). Zonder geldig cookie geeft `/` een redirect naar
+`/login` en geven de `/api/*`-endpoints `401`. Na inloggen zet de server een
+ondertekend cookie (30 dagen geldig); het geheim waarmee dat cookie wordt
+ondertekend staat per installatie in `lesbord.db`.
+
+Zet in productie een eigen wachtwoord via de omgevingsvariabele
+`LESBORD_WACHTWOORD` (standaard `lesbord`). In de systemd-unit:
+
+```ini
+[Service]
+Environment=LESBORD_WACHTWOORD=kies-hier-iets-sterks
+```
+
+Uitloggen kan via `/logout`. Omdat de app achter https draait, is het cookie
+`HttpOnly` + `SameSite=Lax`.
+
+Wil je liever géén wachtwoordpagina maar bijv. basic auth in nginx, dan kan dat
+ook nog steeds:
 
 ```nginx
 location /lesbord/ {

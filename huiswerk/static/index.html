@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2B3A55">
+<title>Huiswerkcontrole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16181d; --paper:#faf9f6; --line:#e2e0da; --muted:#6b6f78;
+  --chrome:#2b3a55; --leeg:#dcdad4; --groen:#2f8f4e; --rood:#c6402f;
+  --naam-breedte:132px; --cel-breedte:52px; --rij-hoogte:46px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--paper); color:var(--ink);
+  font:400 16px/1.4 "IBM Plex Sans",system-ui,sans-serif;
+  overscroll-behavior:none;
+}
+button,input,textarea{font:inherit;color:inherit}
+
+header{
+  position:sticky; top:0; z-index:20;
+  background:var(--chrome); color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display:flex; align-items:center; gap:10px;
+}
+header h1{font-size:17px;font-weight:600;margin:0;flex:1;letter-spacing:.01em}
+header .sub{display:block;font-size:12px;font-weight:400;opacity:.72;
+  font-family:"IBM Plex Mono",monospace}
+.knop{
+  border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff;
+  border-radius:8px; padding:7px 11px; font-size:14px; font-weight:500; cursor:pointer;
+}
+.knop:active{background:rgba(255,255,255,.16)}
+.knop.aan{background:#fff;color:var(--chrome);border-color:#fff}
+main{padding:16px 14px calc(28px + env(safe-area-inset-bottom))}
+
+/* Klastegels */
+.tegels{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tegel{
+  background:#fff;border:1px solid var(--line);border-left:4px solid var(--chrome);
+  border-radius:12px;padding:14px;text-align:left;cursor:pointer;display:block;width:100%;
+}
+.tegel:active{transform:scale(.985)}
+.tegel .naam{font-size:20px;font-weight:600;margin-bottom:6px}
+.tegel .meta{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+.tegel.nieuw{border-style:dashed;border-left-style:dashed;border-color:var(--line);
+  color:var(--muted);display:flex;align-items:center;justify-content:center;min-height:86px;font-weight:500}
+
+/* Raster */
+.raster{
+  overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;
+  max-height:calc(100dvh - 150px); -webkit-overflow-scrolling:touch;
+}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{padding:0;margin:0}
+thead th{
+  position:sticky;top:0;z-index:2;background:#f1efe9;border-bottom:1px solid var(--line);
+  border-left:1px solid var(--line);height:52px;min-width:var(--cel-breedte);
+  font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;
+}
+thead th .datum{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:2px}
+thead th.hoek{left:0;z-index:4;width:var(--naam-breedte);min-width:var(--naam-breedte);
+  border-left:0;text-align:left;padding-left:12px;font-family:"IBM Plex Sans",sans-serif;
+  font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tbody th{
+  position:sticky;left:0;z-index:1;background:#fff;text-align:left;padding:0 10px;
+  width:var(--naam-breedte);min-width:var(--naam-breedte);height:var(--rij-hoogte);
+  border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+tbody th .rij-in{display:flex;align-items:center;gap:6px;width:100%}
+tbody th .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.pct{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--muted);
+  flex:none;padding:2px 5px;border-radius:5px;background:#f1efe9}
+.pct.hoog{color:#1f6b3a;background:#e4f0e8}
+.pct.laag{color:#93301f;background:#f7e3df}
+.samenvatting{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;margin-bottom:10px}
+.samenvatting .groot{font-size:22px;font-weight:700;font-family:"IBM Plex Mono",monospace}
+.samenvatting .bij{font-size:13px;color:var(--muted)}
+tbody tr:nth-child(even) th{background:#fcfbf9}
+tbody td{border-bottom:1px solid var(--line);border-left:1px solid var(--line)}
+.cel{
+  width:var(--cel-breedte);height:var(--rij-hoogte);border:0;display:block;
+  background:var(--leeg);cursor:pointer;transition:background .1s;
+}
+.cel[data-w="1"]{background:var(--groen)}
+.cel[data-w="2"]{background:var(--rood)}
+.cel:focus-visible{outline:3px solid var(--chrome);outline-offset:-3px}
+
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 4px;
+  font-size:14px;font-weight:600;cursor:pointer;color:var(--muted)}
+.tab.actief{background:var(--chrome);border-color:var(--chrome);color:#fff}
+.chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;
+  font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);white-space:nowrap;flex:none}
+.chip.actief{background:#e8ecf4;border-color:var(--chrome);color:var(--chrome);font-weight:600}
+.legenda{display:flex;gap:14px;margin:12px 2px 0;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.legenda span{display:flex;align-items:center;gap:6px}
+.stip{width:14px;height:14px;border-radius:4px;background:var(--leeg)}
+.stip.g{background:var(--groen)} .stip.r{background:var(--rood)}
+
+.balk{display:flex;gap:8px;margin:14px 0 0;flex-wrap:wrap}
+.balk button, .balk a{
+  border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 12px;
+  font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;color:var(--ink)
+}
+.balk button.gevaar{color:var(--rood);border-color:#e8c9c3}
+
+.leeg-melding{border:1px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--muted)}
+
+dialog{border:0;border-radius:14px;padding:18px;width:min(420px,92vw);
+  box-shadow:0 18px 50px rgba(0,0,0,.22)}
+dialog::backdrop{background:rgba(22,24,29,.45)}
+dialog h2{margin:0 0 12px;font-size:17px}
+dialog input,dialog textarea,dialog select{width:100%;border:1px solid var(--line);border-radius:8px;
+  padding:10px;margin-bottom:12px;background:#fff}
+dialog textarea{min-height:150px;resize:vertical}
+.dial-knoppen{display:flex;gap:8px;justify-content:flex-end}
+.dial-knoppen button{border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:9px 14px;font-weight:500;cursor:pointer}
+.dial-knoppen button.prim{background:var(--chrome);color:#fff;border-color:var(--chrome)}
+.dial-knoppen button.gevaar{color:var(--rood);border-color:#e8c9c3;margin-right:auto}
+.fout{color:var(--rood);font-size:14px;margin:-4px 0 10px;min-height:18px}
+.wis{background:none;border:0;color:var(--rood);font-size:13px;cursor:pointer;padding:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <button class="knop" id="terug" hidden>Terug</button>
+  <h1 id="titel">Huiswerkcontrole</h1>
+  <button class="knop" id="bewerk" hidden>Bewerken</button>
+</header>
+<main id="app"></main>
+
+<dialog id="dlg">
+  <h2 id="dlg-titel"></h2>
+  <div id="dlg-veld"></div>
+  <p class="fout" id="dlg-fout"></p>
+  <div class="dial-knoppen">
+    <button id="dlg-annuleer">Annuleren</button>
+    <button class="prim" id="dlg-ok">Opslaan</button>
+  </div>
+</dialog>
+
+<script>
+const app = document.getElementById('app');
+const titel = document.getElementById('titel');
+const knopTerug = document.getElementById('terug');
+const knopBewerk = document.getElementById('bewerk');
+let bewerkModus = false;
+const periodePerKlas = {};
+const hoofdstukPerKlas = {};
+let weergave = null;
+
+async function api(pad, opties = {}) {
+  const r = await fetch('api' + pad, {
+    headers: {'Content-Type': 'application/json'},
+    ...opties,
+    body: opties.body ? JSON.stringify(opties.body) : undefined,
+  });
+  if (r.status === 401) { toonLogin(); throw new Error('login'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Er ging iets mis');
+  return data;
+}
+
+/* ---------- dialoog ---------- */
+const dlg = document.getElementById('dlg');
+function vraag({titel: t, veld, ok = 'Opslaan'}) {
+  return new Promise(res => {
+    document.getElementById('dlg-titel').textContent = t;
+    document.getElementById('dlg-veld').innerHTML = veld;
+    document.getElementById('dlg-fout').textContent = '';
+    document.getElementById('dlg-ok').textContent = ok;
+    const invoer = dlg.querySelector('input,textarea');
+    const sluit = w => { dlg.onclose = null; dlg.close(); res(w); };
+    document.getElementById('dlg-ok').onclick = () => sluit(invoer ? invoer.value : true);
+    document.getElementById('dlg-annuleer').onclick = () => sluit(null);
+    dlg.onclose = () => res(null);
+    dlg.showModal();
+    if (invoer) setTimeout(() => invoer.focus(), 50);
+  });
+}
+function fout(bericht) { document.getElementById('dlg-fout').textContent = bericht; }
+
+/* ---------- login ---------- */
+async function toonLogin() {
+  const pin = await vraag({titel: 'Pincode', veld: '<input type="password" inputmode="numeric" placeholder="Pincode">', ok: 'Inloggen'});
+  if (pin === null) return;
+  try { await api('/login', {method: 'POST', body: {pin}}); route(); }
+  catch { toonLogin(); }
+}
+
+/* ---------- overzicht ---------- */
+async function toonKlassen() {
+  knopTerug.hidden = true; knopBewerk.hidden = true;
+  titel.innerHTML = 'Huiswerkcontrole';
+  const klassen = await api('/klassen');
+  app.innerHTML = `<div class="tegels">${klassen.map(k => `
+    <button class="tegel" data-id="${k.id}">
+      <span class="naam">${esc(k.naam)}</span>
+      <span class="meta">${k.aantal} leerlingen${k.laatste ? ' · ' + kort(k.laatste) : ''}</span>
+    </button>`).join('')}
+    <button class="tegel nieuw" id="nieuwe-klas">Klas toevoegen</button></div>`;
+
+  app.querySelectorAll('.tegel[data-id]').forEach(t =>
+    t.onclick = () => location.hash = '#/klas/' + t.dataset.id);
+  document.getElementById('nieuwe-klas').onclick = async () => {
+    const naam = await vraag({titel: 'Nieuwe klas', veld: '<input placeholder="bijv. H4A">'});
+    if (!naam || !naam.trim()) return;
+    const klas = await api('/klassen', {method: 'POST', body: {naam}});
+    location.hash = '#/klas/' + klas.id;
+  };
+}
+
+/* ---------- klasraster ---------- */
+async function toonKlas(id) {
+  const k = await api('/klassen/' + id);
+  knopTerug.hidden = false; knopBewerk.hidden = false;
+  knopBewerk.classList.toggle('aan', bewerkModus);
+  knopBewerk.textContent = bewerkModus ? 'Klaar' : 'Bewerken';
+  titel.innerHTML = `${esc(k.naam)}<span class="sub">${k.leerlingen.length} leerlingen · ${k.opdrachten.length} opdrachten</span>`;
+
+  if (!k.leerlingen.length) {
+    app.innerHTML = `<div class="leeg-melding">Voeg eerst de voornamen van deze klas toe.</div>
+      <div class="balk"><button id="add-l">Leerlingen toevoegen</button></div>`;
+    document.getElementById('add-l').onclick = () => leerlingenToevoegen(id);
+    return;
+  }
+
+  const huidige = periodePerKlas[id] || 1;
+  const inPeriode = k.opdrachten.filter(o => o.periode === huidige);
+  const hoofdstukken = [...new Set(inPeriode.map(o => o.hoofdstuk || ''))];
+  let hs = hoofdstukPerKlas[id];
+  if (hs !== '*' && !hoofdstukken.includes(hs)) hs = '*';
+  const opdrachten = hs === '*' ? inPeriode : inPeriode.filter(o => (o.hoofdstuk || '') === hs);
+
+  const tabs = [1, 2, 3, 4].map(p => `<button class="tab${p === huidige ? ' actief' : ''}" data-p="${p}">Periode ${p}</button>`).join('');
+  const chips = hoofdstukken.length > 1 ? `<div class="chips">
+      <button class="chip${hs === '*' ? ' actief' : ''}" data-h="*">Alles (${inPeriode.length})</button>
+      ${hoofdstukken.map(h => {
+        const aantal = inPeriode.filter(o => (o.hoofdstuk || '') === h).length;
+        return `<button class="chip${hs === h ? ' actief' : ''}" data-h="${esc(h)}">${esc(h || 'zonder hoofdstuk')} (${aantal})</button>`;
+      }).join('')}</div>` : '';
+
+  const leerlingIds = k.leerlingen.map(l => l.id);
+  const klasSelectie = tel(k.status, leerlingIds, opdrachten);
+  const klasPeriode = tel(k.status, leerlingIds, inPeriode);
+  const gefilterd = hs !== '*' && hoofdstukken.length > 1;
+  const samenvatting = `<div class="samenvatting">
+      <span class="groot">${klasSelectie.pct === null ? '—' : klasSelectie.pct + '%'}</span>
+      <span class="bij">gemaakt${gefilterd ? ` in ${esc(hs || 'zonder hoofdstuk')}` : ` in periode ${huidige}`}
+        · ${klasSelectie.groen} van ${klasSelectie.totaal} gecontroleerd</span>
+      ${gefilterd && klasPeriode.pct !== null ? `<span class="bij">hele periode: ${klasPeriode.pct}%</span>` : ''}
+    </div>`;
+
+  const kop = opdrachten.map(o => {
+    const onder = [hs === '*' && o.hoofdstuk ? esc(o.hoofdstuk) : '', o.datum ? kort(o.datum) : '—']
+      .filter(Boolean).join(' · ');
+    return `<th data-op="${o.id}">${esc(o.nummer)}<span class="datum">${onder}</span></th>`;
+  }).join('');
+  const rijen = k.leerlingen.map(l => {
+    const t = tel(k.status, [l.id], opdrachten);
+    return `<tr>
+      <th><span class="rij-in">
+        <span class="nm">${esc(l.voornaam)}</span>
+        ${bewerkModus ? `<button class="wis" data-wis-l="${l.id}">wis</button>` : pctLabel(t)}
+      </span></th>
+      ${opdrachten.map(o => {
+        const w = k.status[`${l.id}-${o.id}`] || 0;
+        return `<td><button class="cel" data-w="${w}" data-l="${l.id}" data-o="${o.id}"
+          aria-label="${esc(l.voornaam)}, opdracht ${esc(o.nummer)}"></button></td>`;
+      }).join('')}</tr>`;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="tabs">${tabs}</div>
+    ${chips}
+    ${opdrachten.length ? samenvatting : ''}
+    <div class="raster"><table>
+      <thead><tr><th class="hoek">Naam</th>${kop || '<th style="min-width:140px;font-weight:400;color:var(--muted)">geen opdrachten</th>'}</tr></thead>
+      <tbody>${rijen}</tbody>
+    </table></div>
+    <div class="legenda">
+      <span><i class="stip"></i>niet gecontroleerd</span>
+      <span><i class="stip g"></i>gemaakt</span>
+      <span><i class="stip r"></i>niet gemaakt</span>
+    </div>
+    <div class="balk">
+      <button id="add-o">Opdrachten toevoegen aan periode ${huidige}</button>
+      ${bewerkModus ? `<button id="add-l">Leerlingen toevoegen</button>
+        <a href="api/klassen/${id}/export">Exporteren (CSV)</a>
+        ${opdrachten.length ? `<button class="gevaar" id="clear-p">${hs === '*' ? `Periode ${huidige} legen` : `${esc(hs || 'Zonder hoofdstuk')} legen`}</button>` : ''}
+        <button class="gevaar" id="del-k">Klas verwijderen</button>` : ''}
+    </div>`;
+
+  weergave = {k, opdrachten, inPeriode, leerlingIds, hs, huidige, gefilterd};
+
+  app.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    periodePerKlas[id] = Number(t.dataset.p);
+    hoofdstukPerKlas[id] = '*';
+    toonKlas(id);
+  });
+  app.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    hoofdstukPerKlas[id] = c.dataset.h;
+    toonKlas(id);
+  });
+  app.querySelectorAll('.cel').forEach(cel => cel.onclick = () => tik(cel));
+  document.getElementById('add-o').onclick = () => opdrachtToevoegen(id, huidige);
+  if (bewerkModus) {
+    document.getElementById('add-l').onclick = () => leerlingenToevoegen(id);
+    document.getElementById('del-k').onclick = async () => {
+      if (!confirm('Klas en alle registraties verwijderen?')) return;
+      await api('/klassen/' + id, {method: 'DELETE'});
+      location.hash = '#/';
+    };
+    const wisKnop = document.getElementById('clear-p');
+    if (wisKnop) wisKnop.onclick = async () => {
+      const wat = hs === '*' ? `alle opdrachten in periode ${huidige}` : `hoofdstuk ${hs || '(zonder)'} in periode ${huidige}`;
+      if (!confirm(`${wat} verwijderen? Dit verwijdert ook de registraties.`)) return;
+      const q = hs === '*' ? '' : `&hoofdstuk=${encodeURIComponent(hs)}`;
+      await api(`/klassen/${id}/opdrachten?periode=${huidige}${q}`, {method: 'DELETE'});
+      hoofdstukPerKlas[id] = '*';
+      toonKlas(id);
+    };
+    app.querySelectorAll('[data-wis-l]').forEach(b => b.onclick = async e => {
+      e.stopPropagation();
+      await api('/leerlingen/' + b.dataset.wisL, {method: 'DELETE'});
+      toonKlas(id);
+    });
+    app.querySelectorAll('th[data-op]').forEach(th => {
+      const op = k.opdrachten.find(o => o.id === Number(th.dataset.op));
+      th.onclick = () => opdrachtBewerken(op, id);
+    });
+  }
+}
+
+async function tik(cel) {
+  const nieuw = (Number(cel.dataset.w) + 1) % 3;
+  cel.dataset.w = nieuw;
+  if (navigator.vibrate) navigator.vibrate(8);
+
+  if (weergave) {
+    weergave.k.status[`${cel.dataset.l}-${cel.dataset.o}`] = nieuw;
+    ververPercentages(Number(cel.dataset.l));
+  }
+
+  const res = await api('/status', {method: 'POST', body: {
+    leerling_id: Number(cel.dataset.l), opdracht_id: Number(cel.dataset.o), waarde: nieuw}});
+  const kop = document.querySelector(`th[data-op="${cel.dataset.o}"] .datum`);
+  if (kop && res.datum && kop.textContent.includes('—')) {
+    kop.textContent = kop.textContent.replace('—', kort(res.datum));
+  }
+}
+
+function ververPercentages(leerlingId) {
+  const w = weergave;
+  if (!w || bewerkModus) return;
+
+  const rij = document.querySelector(`.cel[data-l="${leerlingId}"]`)?.closest('tr');
+  if (rij) {
+    const vak = rij.querySelector('.pct');
+    if (vak) vak.outerHTML = pctLabel(tel(w.k.status, [leerlingId], w.opdrachten));
+  }
+
+  const balk = document.querySelector('.samenvatting');
+  if (!balk) return;
+  const sel = tel(w.k.status, w.leerlingIds, w.opdrachten);
+  balk.querySelector('.groot').textContent = sel.pct === null ? '—' : sel.pct + '%';
+  const bijen = balk.querySelectorAll('.bij');
+  bijen[0].textContent = `gemaakt${w.gefilterd ? ` in ${w.hs || 'zonder hoofdstuk'}` : ` in periode ${w.huidige}`}`
+    + ` · ${sel.groen} van ${sel.totaal} gecontroleerd`;
+  if (bijen[1]) {
+    const per = tel(w.k.status, w.leerlingIds, w.inPeriode);
+    bijen[1].textContent = `hele periode: ${per.pct === null ? '—' : per.pct + '%'}`;
+  }
+}
+
+function ontleedReeks(tekst) {
+  const resultaat = [];
+  for (const deel of tekst.split(',')) {
+    const stuk = deel.trim();
+    if (!stuk) continue;
+    const bereik = stuk.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (bereik) {
+      let a = Number(bereik[1]), b = Number(bereik[2]);
+      const stap = a <= b ? 1 : -1;
+      for (let n = a; n !== b + stap; n += stap) resultaat.push(String(n));
+    } else {
+      resultaat.push(stuk);
+    }
+  }
+  return resultaat;
+}
+
+async function opdrachtToevoegen(klasId, periode) {
+  document.getElementById('dlg-titel').textContent = `Opdrachten toevoegen aan periode ${periode}`;
+  document.getElementById('dlg-veld').innerHTML = `
+    <input id="v-hs" placeholder="Hoofdstuk, bijv. H1">
+    <input id="v-nrs" placeholder="Nummers, bijv. 1-80">`;
+  document.getElementById('dlg-fout').textContent = '';
+  document.getElementById('dlg-ok').textContent = 'Toevoegen';
+
+  const ok = await new Promise(res => {
+    const sluit = w => { dlg.onclose = null; dlg.close(); res(w); };
+    document.getElementById('dlg-ok').onclick = () => sluit(true);
+    document.getElementById('dlg-annuleer').onclick = () => sluit(null);
+    dlg.onclose = () => res(null);
+    dlg.showModal();
+    setTimeout(() => document.getElementById('v-hs').focus(), 50);
+  });
+  if (!ok) return;
+
+  const hoofdstuk = document.getElementById('v-hs').value.trim();
+  const nummers = ontleedReeks(document.getElementById('v-nrs').value);
+  if (!nummers.length) return;
+  const res = await api(`/klassen/${klasId}/opdrachten`, {method: 'POST', body: {nummers, periode, hoofdstuk}});
+  hoofdstukPerKlas[klasId] = hoofdstuk;
+  toonKlas(klasId);
+  if (res.overgeslagen) {
+    setTimeout(() => alert(`${res.aangemaakt} toegevoegd, ${res.overgeslagen} bestonden al in dit hoofdstuk.`), 50);
+  }
+}
+
+async function opdrachtBewerken(op, klasId) {
+  const periode = op.periode;
+  const opties = [1, 2, 3, 4].map(p =>
+    `<option value="${p}" ${p === periode ? 'selected' : ''}>Periode ${p}</option>`).join('');
+  document.getElementById('dlg-titel').textContent = `Opdracht ${op.nummer} aanpassen`;
+  document.getElementById('dlg-veld').innerHTML = `
+    <input id="v-nr" placeholder="Opdrachtnummer" value="${esc(op.nummer)}">
+    <input id="v-hs" placeholder="Hoofdstuk" value="${esc(op.hoofdstuk || '')}">
+    <input type="date" id="v-dt" value="${op.datum || ''}">
+    <select id="v-pr">${opties}</select>`;
+  document.getElementById('dlg-fout').textContent = '';
+  const knoppenOrigineel = document.querySelector('.dial-knoppen').innerHTML;
+  document.querySelector('.dial-knoppen').innerHTML = `
+    <button class="gevaar" id="dlg-verwijder">Verwijderen</button>
+    <button id="dlg-annuleer">Annuleren</button>
+    <button class="prim" id="dlg-ok">Opslaan</button>`;
+
+  const resultaat = await new Promise(res => {
+    const sluit = w => { dlg.onclose = null; dlg.close(); res(w); };
+    document.getElementById('dlg-ok').onclick = () => sluit({actie: 'opslaan'});
+    document.getElementById('dlg-annuleer').onclick = () => sluit(null);
+    document.getElementById('dlg-verwijder').onclick = () => sluit({actie: 'verwijderen'});
+    dlg.onclose = () => res(null);
+    dlg.showModal();
+  });
+  document.querySelector('.dial-knoppen').innerHTML = knoppenOrigineel;
+
+  if (!resultaat) return;
+  if (resultaat.actie === 'verwijderen') {
+    if (!confirm('Deze opdracht en de bijbehorende registraties verwijderen?')) return;
+    await api('/opdrachten/' + op.id, {method: 'DELETE'});
+    toonKlas(klasId);
+    return;
+  }
+  const body = {
+    nummer: document.getElementById('v-nr').value.trim() || op.nummer,
+    hoofdstuk: document.getElementById('v-hs').value.trim(),
+    periode: Number(document.getElementById('v-pr').value),
+  };
+  const dt = document.getElementById('v-dt').value;
+  if (dt) body.datum = dt;
+  await api('/opdrachten/' + op.id, {method: 'PATCH', body});
+  toonKlas(klasId);
+}
+
+async function leerlingenToevoegen(klasId) {
+  const namen = await vraag({titel: 'Voornamen toevoegen',
+    veld: '<textarea placeholder="Eén voornaam per regel"></textarea>'});
+  if (!namen || !namen.trim()) return;
+  await api(`/klassen/${klasId}/leerlingen`, {method: 'POST', body: {namen}});
+  toonKlas(klasId);
+}
+
+/* ---------- hulp ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const kort = iso => iso ? iso.slice(8,10) + '-' + iso.slice(5,7) : '';
+
+// Telt groen/rood over de meegegeven opdrachten. Grijs (niet gecontroleerd) telt niet mee.
+function tel(status, leerlingIds, opdrachten) {
+  let groen = 0, rood = 0;
+  for (const l of leerlingIds) {
+    for (const o of opdrachten) {
+      const w = status[`${l}-${o.id}`] || 0;
+      if (w === 1) groen++;
+      else if (w === 2) rood++;
+    }
+  }
+  const totaal = groen + rood;
+  return {groen, rood, totaal, pct: totaal ? Math.round(groen / totaal * 100) : null};
+}
+
+function pctLabel(t) {
+  if (t.pct === null) return '<span class="pct">—</span>';
+  const klasse = t.pct >= 80 ? ' hoog' : (t.pct < 50 ? ' laag' : '');
+  return `<span class="pct${klasse}" title="${t.groen} van ${t.totaal} gecontroleerd">${t.pct}%</span>`;
+}
+
+function route() {
+  const m = location.hash.match(/^#\/klas\/(\d+)/);
+  (m ? toonKlas(m[1]) : toonKlassen()).catch(e => {
+    if (e.message !== 'login') app.innerHTML = `<div class="leeg-melding">${esc(e.message)}</div>`;
+  });
+}
+knopTerug.onclick = () => { bewerkModus = false; location.hash = '#/'; };
+knopBewerk.onclick = () => { bewerkModus = !bewerkModus; route(); };
+window.addEventListener('hashchange', route);
+
+api('/sessie').then(s => (s.pin_nodig && !s.ingelogd) ? toonLogin() : route()).catch(() => toonLogin());
+</script>
+</body>
+</html>
