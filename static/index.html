@@ -129,6 +129,9 @@
   #aanwezig-lijst{display:flex;flex-wrap:wrap;gap:5px}
   .lln-chip{padding:4px 10px;font-size:13px;border-radius:999px}
   .lln-chip.afwezig{text-decoration:line-through;color:var(--muted);background:var(--paper);border-style:dashed}
+  .hw-rij{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:3px 2px;border-bottom:1px solid var(--line)}
+  .hw-rij:last-child{border-bottom:none}
+  .hw-pct{font-variant-numeric:tabular-nums;font-weight:600;margin-left:8px}
 
   /* ---------- TIMER ---------- */
   #timer{position:absolute;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 14px rgba(20,30,50,.12);padding:10px 16px;text-align:center;cursor:pointer;user-select:none}
@@ -152,7 +155,11 @@
 
 <!-- ================= HOME ================= -->
 <div id="home">
-  <h1>Lesbord</h1>
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <h1>Lesbord</h1>
+    <a href="huiswerk/" target="_blank" rel="noopener"
+       style="text-decoration:none;color:var(--accent);font-weight:600;font-size:14px">Huiswerkcontrole ↗</a>
+  </div>
   <p class="sub muted">Kies een klas en open of maak een les.</p>
   <div class="home-grid">
     <div>
@@ -170,6 +177,7 @@
   <div id="topbar">
     <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
+    <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
     <span class="crumb" id="crumb"></span>
     <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
     <span id="savestate"></span>
@@ -227,6 +235,11 @@
           <summary style="cursor:pointer;font-size:14px">Aanwezigheid <span id="aanwezig-teller" class="muted"></span></summary>
           <p class="muted" style="font-size:12px;margin:6px 0">Tik een naam aan om die als afwezig te markeren.</p>
           <div id="aanwezig-lijst"></div>
+        </details>
+        <details id="huiswerk-blok" style="margin-bottom:10px;display:none">
+          <summary style="cursor:pointer;font-size:14px">Huiswerk <span id="huiswerk-gem" class="muted"></span></summary>
+          <p class="muted" style="font-size:12px;margin:6px 0">% gemaakt volgens de huiswerkcontrole.</p>
+          <div id="huiswerk-lijst"></div>
         </details>
         <button class="primary" style="width:100%" onclick="maakGroepjes()">🎲 Hussel groepjes</button>
         <div id="groepen-lijst"></div>
@@ -295,11 +308,12 @@
 <!-- dialoog: leerlingen -->
 <dialog id="dlg-namen">
   <h3>Leerlingen <span id="dlg-namen-klas" class="muted"></span></h3>
-  <p class="muted" style="margin:0 0 8px;font-size:13px">Eén naam per regel — plakken uit Excel of Magister werkt direct.</p>
+  <p class="muted" style="margin:0 0 8px;font-size:13px">Eén naam per regel — plakken uit Excel of Magister werkt direct, of neem ze over uit de huiswerkcontrole.</p>
   <textarea id="dlg-namen-tekst" rows="14" style="width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea>
   <div class="row" style="justify-content:space-between;margin-top:10px">
-    <span class="muted" id="dlg-namen-aantal" style="font-size:13px"></span>
+    <button onclick="namenUitHuiswerk()" title="Namen overnemen uit de huiswerkcontrole (zelfde klasnaam)">↓ Uit huiswerkcontrole</button>
     <span class="row">
+      <span class="muted" id="dlg-namen-aantal" style="font-size:13px"></span>
       <button onclick="dlgNamen.close()">Annuleren</button>
       <button class="primary" onclick="bewaarNamen()">Opslaan</button>
     </span>
@@ -428,6 +442,19 @@ async function bewaarNamen(){
   dlgNamen.close();
   kiesKlas(huidigeKlas);
 }
+async function namenUitHuiswerk(){
+  const hw = await api.get(`klassen/${huidigeKlas.id}/huiswerk`);
+  if(!hw.gekoppeld){
+    alert(`Geen klas “${huidigeKlas.naam}” gevonden in de huiswerkcontrole.\nGeef de klas daar dezelfde naam om de namen over te nemen.`);
+    return;
+  }
+  const namen = hw.leerlingen.map(l => l.voornaam);
+  if(!namen.length){ alert("Deze klas heeft nog geen leerlingen in de huiswerkcontrole."); return; }
+  const ta = document.getElementById("dlg-namen-tekst");
+  if(ta.value.trim() && !confirm(`De huidige lijst vervangen door ${namen.length} namen uit de huiswerkcontrole?`)) return;
+  ta.value = namen.join("\n");
+  telNamen();
+}
 
 async function verwijderKlas(){
   if(!confirm(`Klas “${huidigeKlas.naam}” en alle lessen verwijderen?`)) return;
@@ -488,6 +515,7 @@ async function openLes(id){
   document.getElementById("doelen").innerHTML = c.doelen;
   document.getElementById("theorie").innerHTML = c.theorie;
   renderTabs(); renderSnippet(); renderGroepen(); renderAanwezig();
+  laadHuiswerk();
   document.getElementById("groepen-paneel").classList.remove("open");
   undoStack = [];
   requestAnimationFrame(resizeBoard);
@@ -922,6 +950,32 @@ document.getElementById("startopdracht").addEventListener("input", () => {
 
 /* ============ GROEPJES ============ */
 let groepGrootte = 3;
+let huiswerkStats = null;
+async function laadHuiswerk(){
+  huiswerkStats = null;
+  renderHuiswerk();
+  try{ huiswerkStats = await api.get("klassen/"+les.klas_id+"/huiswerk"); }
+  catch(e){ huiswerkStats = null; }
+  renderHuiswerk();
+}
+function renderHuiswerk(){
+  const blok = document.getElementById("huiswerk-blok");
+  if(!huiswerkStats || !huiswerkStats.gekoppeld){ blok.style.display = "none"; return; }
+  blok.style.display = "";
+  const gem = huiswerkStats.gemiddelde;
+  document.getElementById("huiswerk-gem").textContent = gem!=null ? `— gem. ${gem}%` : "— nog niets gecontroleerd";
+  const lijst = document.getElementById("huiswerk-lijst");
+  lijst.innerHTML = "";
+  for(const l of huiswerkStats.leerlingen){
+    const p = l.procent;
+    const kleur = p==null ? "var(--muted)" : p>=80 ? "var(--ok)" : p>=50 ? "#b8860b" : "var(--warn)";
+    const rij = document.createElement("div");
+    rij.className = "hw-rij";
+    rij.innerHTML = `<span class="hw-naam"></span><span class="hw-pct" style="color:${kleur}">${p==null?'–':p+'%'}</span>`;
+    rij.querySelector(".hw-naam").textContent = l.voornaam;
+    lijst.appendChild(rij);
+  }
+}
 document.querySelectorAll(".gmaat").forEach(b => b.onclick = () => {
   groepGrootte = +b.dataset.n;
   document.querySelectorAll(".gmaat").forEach(x => x.classList.toggle("on", x===b));

@@ -25,6 +25,7 @@ from huiswerk.app import app as huiswerk_wsgi_app
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "lesbord.db")
+HUISWERK_DB = os.path.join(BASE, "huiswerk.db")
 UPLOAD_DIR = os.path.join(BASE, "uploads")
 STATIC_DIR = os.path.join(BASE, "static")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -222,6 +223,85 @@ def zet_leerlingen(klas_id: int, body: LeerlingenIn):
     return {"ok": True, "aantal": len(namen)}
 
 
+def _huiswerk_klas_stats(naam: str) -> Optional[dict]:
+    """Zoek de bijbehorende huiswerkcontrole-klas (match op klasnaam) en bereken
+    per leerling het percentage gemaakt huiswerk. Read-only op huiswerk.db.
+
+    Percentage = groen / (groen + rood), net als in de huiswerkcontrole zelf:
+    niet-gecontroleerde vakjes tellen niet mee.
+    """
+    if not os.path.exists(HUISWERK_DB):
+        return None
+    con = sqlite3.connect(f"file:{HUISWERK_DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        k = con.execute(
+            "SELECT id, naam FROM klas WHERE lower(trim(naam)) = lower(trim(?))",
+            (naam,),
+        ).fetchone()
+        if not k:
+            return None
+        leerlingen = con.execute(
+            "SELECT id, voornaam FROM leerling WHERE klas_id=? ORDER BY volgorde, voornaam",
+            (k["id"],),
+        ).fetchall()
+        statussen = con.execute(
+            """SELECT s.leerling_id AS lid, s.waarde AS w
+               FROM status s JOIN leerling l ON l.id = s.leerling_id
+               WHERE l.klas_id = ?""",
+            (k["id"],),
+        ).fetchall()
+    finally:
+        con.close()
+
+    groen: dict[int, int] = {}
+    rood: dict[int, int] = {}
+    for r in statussen:
+        if r["w"] == 1:
+            groen[r["lid"]] = groen.get(r["lid"], 0) + 1
+        elif r["w"] == 2:
+            rood[r["lid"]] = rood.get(r["lid"], 0) + 1
+
+    uit, procenten = [], []
+    for l in leerlingen:
+        g, rd = groen.get(l["id"], 0), rood.get(l["id"], 0)
+        gecontroleerd = g + rd
+        pct = round(g / gecontroleerd * 100) if gecontroleerd else None
+        if pct is not None:
+            procenten.append(pct)
+        uit.append(
+            {
+                "voornaam": l["voornaam"],
+                "procent": pct,
+                "gemaakt": g,
+                "nietgemaakt": rd,
+                "gecontroleerd": gecontroleerd,
+            }
+        )
+    gemiddelde = round(sum(procenten) / len(procenten)) if procenten else None
+    return {
+        "gekoppeld": True,
+        "huiswerk_klas_id": k["id"],
+        "naam": k["naam"],
+        "leerlingen": uit,
+        "gemiddelde": gemiddelde,
+    }
+
+
+@app.get("/api/klassen/{klas_id}/huiswerk")
+def klas_huiswerk(klas_id: int):
+    """Huiswerkcontrole-cijfers voor deze klas (gematcht op klasnaam)."""
+    con = db()
+    row = con.execute("SELECT naam FROM klassen WHERE id=?", (klas_id,)).fetchone()
+    con.close()
+    if not row:
+        raise HTTPException(404, "Klas niet gevonden")
+    stats = _huiswerk_klas_stats(row["naam"])
+    if stats is None:
+        return {"gekoppeld": False, "naam": row["naam"]}
+    return stats
+
+
 @app.post("/api/klassen")
 def create_klas(body: KlasIn):
     con = db()
@@ -381,6 +461,18 @@ async def upload(file: UploadFile = File(...)):
 
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+
+@app.get("/huiswerk")
+def huiswerk_slash():
+    # Zorg voor de afsluitende slash zodat de relatieve URLs in de huiswerk-app
+    # kloppen (ook onder een subpad).
+    return RedirectResponse("huiswerk/", status_code=307)
+
+
+# Huiswerkcontrole-app (Flask) gemount onder /huiswerk/. Valt onder dezelfde
+# wachtwoordbeveiliging als het lesbord, dus één keer inloggen volstaat.
+app.mount("/huiswerk", WSGIMiddleware(huiswerk_wsgi_app))
 
 
 @app.get("/")

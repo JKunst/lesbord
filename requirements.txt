@@ -3,3 +3,4 @@ uvicorn[standard]
 python-multipart
 flask>=3.0
 a2wsgi>=1.10
+tzdata; platform_system == "Windows"

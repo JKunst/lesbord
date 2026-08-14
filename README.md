@@ -23,11 +23,36 @@ opgeslagen.
   `⌂` springt terug naar het beginpunt. Ctrl+Z = ongedaan maken.
 - **Groepjes**: 👥 rechtsboven op het bord opent een paneel met
   aanwezigheid (tik een naam aan = afwezig) en een hussel-knop voor
-  groepjes van 2, 3 of 4. Namen zet je per klas op het beginscherm.
+  groepjes van 2, 3 of 4. Namen zet je per klas op het beginscherm — of
+  neem ze over uit de huiswerkcontrole (knop **↓ Uit huiswerkcontrole** in
+  het namenvenster). Onder in het paneel staat ook het blok **Huiswerk** met
+  het percentage gemaakt huiswerk per leerling (uit de huiswerkcontrole).
 - **Timer**: klik op de klok rechtsonder, kies een preset of aantal minuten.
   Onder de 5 minuten wordt hij rood.
 - **Les kopiëren**: in het overzicht via ⧉ — handig als je dezelfde les aan
   meerdere klassen geeft (bord-inkt gaat mee, dus meestal kopieer je vóór de les).
+
+## Huiswerkcontrole
+
+De huiswerkcontrole-app draait mee onder **`/huiswerk/`** (op de VPS dus
+`https://…/lesbord/huiswerk/`). Handig tijdens de les: open het lesbord op je
+laptop en doe de huiswerkcheck op je telefoon — beide zitten achter hetzelfde
+wachtwoord, dus je logt maar één keer in. Je opent het via de link
+**Huiswerkcontrole ↗** op het startscherm of de knop **📋 Huiswerk** in de
+balk bovenin een les.
+
+**Koppeling lesbord ↔ huiswerkcontrole** loopt via de **klasnaam** (dezelfde
+naam in beide, hoofdletterongevoelig). Zolang die overeenkomt:
+
+- neem je de leerlingnamen in het lesbord over uit de huiswerkcontrole met
+  **↓ Uit huiswerkcontrole** in het namenvenster (👥 op het beginscherm), en
+- zie je in het groepjespaneel (👥 op het bord) per leerling het percentage
+  gemaakt huiswerk plus het klasgemiddelde.
+
+Technisch is het de originele Flask-app (`huiswerk/`) die als sub-app in de
+FastAPI-server is gemount; de data staat in `huiswerk.db` naast `lesbord.db`.
+De eigen pincode van de huiswerk-app staat uit (de wachtwoordpagina van het
+lesbord beveiligt alles). Wil je hem tóch los draaien: `python huiswerk/app.py`.
 
 ## Lokaal draaien
 
@@ -42,7 +67,8 @@ uvicorn main:app --port 8600
 
 ```bash
 sudo mkdir -p /opt/lesbord && sudo chown streamlit:streamlit /opt/lesbord
-# kopieer main.py, requirements.txt, static/ naar /opt/lesbord (git of scp)
+# kopieer main.py, requirements.txt, static/ en huiswerk/ naar /opt/lesbord (git of scp)
+# (wil je bestaande huiswerkdata meenemen? kopieer dan ook huiswerk.db mee)
 cd /opt/lesbord
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
