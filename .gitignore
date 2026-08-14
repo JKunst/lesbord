@@ -1,0 +1,6 @@
+env
+lesbord.db
+uploads/*
+!uploads/.gitkeep
+__pycache__/
+nohup.out

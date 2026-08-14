@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesbord</title>
+<style>
+  :root{
+    --ink:#1c2733; --muted:#66717f; --paper:#f4f6f3; --panel:#ffffff;
+    --accent:#2451b3; --accent-soft:#e8eefb; --line:#dde3ea;
+    --grid:#d9e3f2; --board:#fdfdfa; --warn:#c62828; --ok:#2e7d32;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--paper)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 14px}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  [contenteditable]:focus{outline:2px solid var(--accent-soft)}
+  .muted{color:var(--muted)}
+
+  /* ---------- HOME ---------- */
+  #home{max-width:1100px;margin:0 auto;padding:36px 24px}
+  #home h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+  #home .sub{margin:0 0 28px}
+  .home-grid{display:grid;grid-template-columns:280px 1fr;gap:24px;align-items:start}
+  .klas-list{display:flex;flex-direction:column;gap:8px}
+  .klas-card{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;cursor:pointer}
+  .klas-card:hover{border-color:var(--accent)}
+  .klas-card.active{border-color:var(--accent);background:var(--accent-soft)}
+  .klas-card .n{font-weight:600}
+  .badge{font-size:12px;color:var(--muted)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .les-row{display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid var(--line)}
+  .les-row:last-child{border-bottom:none}
+  .les-row .d{font-variant-numeric:tabular-nums;color:var(--muted);width:90px;flex:none}
+  .les-row .t{flex:1;font-weight:500;cursor:pointer}
+  .les-row .t:hover{color:var(--accent)}
+  .icon-btn{padding:5px 9px;font-size:13px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .empty{padding:32px;text-align:center;color:var(--muted)}
+
+  /* ---------- LES ---------- */
+  #les{display:none;height:100vh;flex-direction:column}
+  #les.open{display:flex}
+
+  #topbar{display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
+  #topbar .crumb{font-size:13px;color:var(--muted);white-space:nowrap}
+  #doelen{flex:1;min-width:0;font-size:17px;font-weight:600;padding:6px 10px;border-radius:8px}
+  #doelen:empty::before{content:"Leerdoelen van deze les…";color:var(--muted);font-weight:400}
+  #savestate{font-size:12px;color:var(--muted);white-space:nowrap;min-width:86px;text-align:right}
+
+  #theorie-wrap{flex:none;background:var(--panel);border-bottom:1px solid var(--line)}
+  #theorie-head{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  #theorie{padding:4px 18px 12px;max-height:32vh;overflow:auto;font-size:16px}
+  #theorie img{max-width:min(680px,100%);display:block;margin:8px 0;border:1px solid var(--line);border-radius:6px}
+  #theorie:empty::before{content:"Typ hier theorie, of plak een afbeelding (Ctrl+V)…";color:var(--muted)}
+  #theorie-wrap.dicht #theorie{display:none}
+
+  #werk{flex:1;display:flex;min-height:0}
+  #opgave-kolom{width:360px;min-width:220px;max-width:60vw;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line)}
+  #splitter{width:7px;flex:none;cursor:col-resize;background:transparent}
+  #splitter:hover{background:var(--accent-soft)}
+
+  #opgave-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-bottom:1px solid var(--line)}
+  .otab{padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:14px}
+  .otab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  #snippet{flex:1;overflow:auto;padding:12px;outline:none}
+  #snippet img{width:100%;border:1px solid var(--line);border-radius:6px}
+  #snippet .hint{border:2px dashed var(--line);border-radius:var(--r);padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
+  #snippet:focus .hint{border-color:var(--accent)}
+
+  #board-wrap{flex:1;position:relative;min-width:0;background:var(--board)}
+  #board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+
+  #toolbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 8px;box-shadow:0 2px 10px rgba(20,30,50,.08)}
+  #toolbar button{padding:8px 11px;border-radius:8px;font-size:15px;line-height:1}
+  #toolbar button.on{background:var(--accent-soft);border-color:var(--accent)}
+  .kleur{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .kleur.on{box-shadow:0 0 0 2px var(--accent)}
+  .sep{width:1px;height:24px;background:var(--line);margin:0 3px}
+
+  #zoomctl{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px}
+  #zoomctl button{padding:6px 11px;border:none}
+  #zoomlbl{align-self:center;font-size:12px;color:var(--muted);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
+
+  /* ---------- STARTSCHERM ---------- */
+  #start-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #start-scherm.open{display:flex}
+  #start-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #start-kop h2{margin:0;font-size:21px;font-weight:600}
+  #start-kop .k{font-size:14px;opacity:.8}
+  #start-panelen{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0}
+  .start-paneel{background:var(--panel);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;min-height:0;box-shadow:0 6px 24px rgba(20,30,50,.2)}
+  .start-paneel h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);flex:none}
+  .start-body{flex:1;overflow:auto;min-height:0}
+  #afspraken-zone{height:100%;display:flex;align-items:center;justify-content:center;border-radius:10px;outline:none}
+  #afspraken-zone img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+  #afspraken-zone .leeg{border:2px dashed var(--line);border-radius:10px;padding:34px 20px;text-align:center;color:var(--muted);font-size:14px;width:100%}
+  #afspraken-zone:focus .leeg{border-color:var(--accent)}
+  #startopdracht{height:100%;font-size:19px;line-height:1.5;outline:none}
+  #startopdracht:empty::before{content:"Typ hier de startopdracht, of plak een afbeelding (Ctrl+V)…";color:var(--muted);font-size:16px}
+  #startopdracht img{max-width:100%;display:block;margin:10px 0;border:1px solid var(--line);border-radius:8px}
+  .start-paneel .voet{flex:none;padding-top:10px;font-size:13px;color:var(--muted)}
+  #start-voet{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:16px}
+  #start-voet .lbl{color:#fff;font-size:14px}
+  #start-voet input{width:74px}
+  #start-voet button{padding:12px 22px;font-size:16px}
+
+  /* ---------- GROEPJES ---------- */
+  #groep-knop{position:absolute;right:14px;top:10px;font-size:17px;padding:8px 12px;border-radius:10px;box-shadow:0 2px 10px rgba(20,30,50,.08);z-index:6}
+  #groepen-paneel{position:fixed;top:0;right:0;bottom:0;width:270px;background:var(--panel);border-left:1px solid var(--line);box-shadow:-4px 0 16px rgba(20,30,50,.10);padding:14px;overflow:auto;transform:translateX(105%);transition:transform .22s ease;z-index:20}
+  #groepen-paneel.open{transform:none}
+  #timer{transition:right .22s ease}
+  #groepen-paneel.open ~ #timer{right:284px}
+  @media (prefers-reduced-motion: reduce){#groepen-paneel{transition:none}}
+  .gmaat{padding:6px 12px}
+  .gmaat.on{background:var(--accent-soft);border-color:var(--accent);font-weight:600}
+  #aanwezig-lijst{display:flex;flex-wrap:wrap;gap:6px}
+  .lln-chip{padding:5px 10px;font-size:13px;border-radius:99px}
+  .lln-chip.afwezig{opacity:.45;text-decoration:line-through;background:#f3f4f6}
+
+  .groep-kaart{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;background:#fbfcfe}
+  .groep-kaart h4{margin:0 0 6px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+  .groep-kaart div{font-size:15px;line-height:1.6}
+  #aanwezig-lijst{display:flex;flex-wrap:wrap;gap:5px}
+  .lln-chip{padding:4px 10px;font-size:13px;border-radius:999px}
+  .lln-chip.afwezig{text-decoration:line-through;color:var(--muted);background:var(--paper);border-style:dashed}
+
+  /* ---------- TIMER ---------- */
+  #timer{position:absolute;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 14px rgba(20,30,50,.12);padding:10px 16px;text-align:center;cursor:pointer;user-select:none}
+  #timer .tijd{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  #timer .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  #timer.warn .tijd{color:var(--warn);animation:knip 1s step-end infinite}
+  @keyframes knip{50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){#timer.warn .tijd{animation:none}}
+  #timer-menu{position:absolute;right:14px;bottom:96px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:none;box-shadow:0 4px 16px rgba(20,30,50,.15);width:240px}
+  #timer-menu.open{display:block}
+  #timer-menu .presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  #timer-menu .presets button{padding:6px 10px;font-size:13px}
+
+  dialog{border:1px solid var(--line);border-radius:var(--r);padding:20px;min-width:320px}
+  dialog::backdrop{background:rgba(20,30,50,.35)}
+  dialog h3{margin:0 0 14px;font-size:17px}
+  dialog .row{margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<div id="home">
+  <h1>Lesbord</h1>
+  <p class="sub muted">Kies een klas en open of maak een les.</p>
+  <div class="home-grid">
+    <div>
+      <div class="klas-list" id="klas-list"></div>
+      <button style="margin-top:12px;width:100%" onclick="nieuweKlas()">+ Nieuwe klas</button>
+    </div>
+    <div class="panel" id="les-panel">
+      <div class="empty">Kies links een klas.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= LES ================= -->
+<div id="les">
+  <div id="topbar">
+    <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
+    <button onclick="toonStart()" title="Startscherm tonen">Start</button>
+    <span class="crumb" id="crumb"></span>
+    <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
+    <span id="savestate"></span>
+  </div>
+
+  <div id="theorie-wrap">
+    <div id="theorie-head" onclick="toggleTheorie()"><span id="theorie-pijl">▾</span> Theorie</div>
+    <div id="theorie" contenteditable="true" spellcheck="false"></div>
+  </div>
+
+  <div id="werk">
+    <div id="opgave-kolom">
+      <div id="opgave-tabs"></div>
+      <div id="snippet" tabindex="0"></div>
+    </div>
+    <div id="splitter"></div>
+    <div id="board-wrap">
+      <canvas id="board"></canvas>
+      <div id="toolbar">
+        <button id="tool-pen" class="on" title="Pen (P)" onclick="setTool('pen')">✏️</button>
+        <button id="tool-gum" title="Gum (G)" onclick="setTool('gum')">🧽</button>
+        <button id="tool-hand" title="Verschuiven (H, of rechtermuisknop slepen)" onclick="setTool('hand')">✋</button>
+        <span class="sep"></span>
+        <button class="kleur on" style="background:#1d4ed8" data-c="#1d4ed8" title="Blauw"></button>
+        <button class="kleur" style="background:#c62828" data-c="#c62828" title="Rood"></button>
+        <button class="kleur" style="background:#2e7d32" data-c="#2e7d32" title="Groen"></button>
+        <button class="kleur" style="background:#1c2733" data-c="#1c2733" title="Zwart"></button>
+        <span class="sep"></span>
+        <button id="dikte" title="Lijndikte wisselen" onclick="wisselDikte()">—</button>
+        <span class="sep"></span>
+        <button title="Ongedaan maken (Ctrl+Z)" onclick="undo()">↩</button>
+        <button title="Bord van deze opgave wissen" onclick="wisBord()">🗑</button>
+      </div>
+      <div id="zoomctl">
+        <button onclick="zoomStap(1.2)" title="Inzoomen">+</button>
+        <span id="zoomlbl">100%</span>
+        <button onclick="zoomStap(1/1.2)" title="Uitzoomen">−</button>
+        <button onclick="resetView()" title="Terug naar begin">⌂</button>
+      </div>
+      <button id="groep-knop" onclick="toggleGroepen()" title="Groepjes maken">👥</button>
+      <div id="groepen-paneel">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <strong>Groepjes</strong>
+          <button class="icon-btn" onclick="toggleGroepen()">✕</button>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <span class="muted" style="font-size:13px">Grootte:</span>
+          <button class="gmaat" data-n="2">2</button>
+          <button class="gmaat on" data-n="3">3</button>
+          <button class="gmaat" data-n="4">4</button>
+        </div>
+        <div id="aanwezig-kop" class="muted" style="font-size:13px;margin-bottom:6px"></div>
+        <div id="aanwezig-lijst" style="margin-bottom:12px"></div>
+        <details id="aanwezig-blok" style="margin-bottom:10px">
+          <summary style="cursor:pointer;font-size:14px">Aanwezigheid <span id="aanwezig-teller" class="muted"></span></summary>
+          <p class="muted" style="font-size:12px;margin:6px 0">Tik een naam aan om die als afwezig te markeren.</p>
+          <div id="aanwezig-lijst"></div>
+        </details>
+        <button class="primary" style="width:100%" onclick="maakGroepjes()">🎲 Hussel groepjes</button>
+        <div id="groepen-lijst"></div>
+      </div>
+      <div id="timer" onclick="toggleTimerMenu()">
+        <div class="tijd" id="timer-tijd">–:–</div>
+        <div class="lbl">resterend</div>
+      </div>
+      <div id="timer-menu">
+        <div class="presets">
+          <button onclick="startTimer(30)">30</button><button onclick="startTimer(45)">45</button>
+          <button onclick="startTimer(50)">50</button><button onclick="startTimer(60)">60</button>
+          <button onclick="startTimer(70)">70</button><button onclick="startTimer(80)">80</button>
+        </div>
+        <div class="row"><input id="timer-min" type="number" min="1" max="240" placeholder="minuten" style="width:100px">
+          <button class="primary" onclick="startTimer()">Start</button></div>
+        <div class="row"><button onclick="pauzeerTimer()" id="timer-pauze">Pauze</button>
+          <button onclick="stopTimer()">Reset</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STARTSCHERM ================= -->
+<div id="start-scherm">
+  <div id="start-kop">
+    <h2>Start van de les</h2>
+    <span class="k" id="start-kop-info"></span>
+  </div>
+  <div id="start-panelen">
+    <div class="start-paneel">
+      <h3>Afspraken</h3>
+      <div class="start-body">
+        <div id="afspraken-zone" tabindex="0"></div>
+      </div>
+      <div class="voet">
+        <input type="file" id="afspraken-file" accept="image/*" style="display:none">
+        <button class="icon-btn" onclick="document.getElementById('afspraken-file').click()">Afbeelding kiezen</button>
+        <span style="margin-left:6px">of klik in het vak en plak (Ctrl+V). Geldt voor alle lessen.</span>
+      </div>
+    </div>
+    <div class="start-paneel">
+      <h3>Startopdracht</h3>
+      <div class="start-body">
+        <div id="startopdracht" contenteditable="true" spellcheck="false"></div>
+      </div>
+      <div class="voet">Wordt bij deze les opgeslagen.</div>
+    </div>
+  </div>
+  <div id="start-voet">
+    <button class="primary" onclick="startDeLes()">Start de les</button>
+  </div>
+</div>
+
+<!-- dialoog: nieuwe les -->
+<dialog id="dlg-les">
+  <h3>Nieuwe les</h3>
+  <div class="row"><input id="dlg-les-titel" placeholder="Titel (bijv. §4.2 Kwadratische verbanden)" style="flex:1"></div>
+  <div class="row"><input id="dlg-les-datum" type="date"></div>
+  <div class="row" style="justify-content:flex-end">
+    <button onclick="dlgLes.close()">Annuleren</button>
+    <button class="primary" onclick="maakLes()">Aanmaken</button>
+  </div>
+</dialog>
+
+<!-- dialoog: leerlingen -->
+<dialog id="dlg-namen">
+  <h3>Leerlingen <span id="dlg-namen-klas" class="muted"></span></h3>
+  <p class="muted" style="margin:0 0 8px;font-size:13px">Eén naam per regel — plakken uit Excel of Magister werkt direct.</p>
+  <textarea id="dlg-namen-tekst" rows="14" style="width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea>
+  <div class="row" style="justify-content:space-between;margin-top:10px">
+    <span class="muted" id="dlg-namen-aantal" style="font-size:13px"></span>
+    <span class="row">
+      <button onclick="dlgNamen.close()">Annuleren</button>
+      <button class="primary" onclick="bewaarNamen()">Opslaan</button>
+    </span>
+  </div>
+</dialog>
+
+<!-- dialoog: les kopiëren -->
+<dialog id="dlg-kopie">
+  <h3>Les kopiëren naar…</h3>
+  <div class="row"><select id="dlg-kopie-klas" style="flex:1"></select></div>
+  <div class="row"><input id="dlg-kopie-datum" type="date"></div>
+  <div class="row" style="justify-content:flex-end">
+    <button onclick="dlgKopie.close()">Annuleren</button>
+    <button class="primary" onclick="doeKopie()">Kopiëren</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+/* ============ API ============ */
+const api = {
+  get: p => fetch("api/" + p).then(r => r.json()),
+  send: (m, p, body) => fetch("api/" + p, {method:m, headers:{"Content-Type":"application/json"}, body: body===undefined?undefined:JSON.stringify(body)}).then(r => r.json()),
+  upload: async blob => {
+    const fd = new FormData();
+    fd.append("file", blob, "plak.png");
+    const r = await fetch("api/upload", {method:"POST", body:fd});
+    if(!r.ok) throw new Error("upload mislukt");
+    return (await r.json()).url;
+  }
+};
+
+/* ============ HOME ============ */
+let klassen = [], huidigeKlas = null, kopieLesId = null;
+const dlgLes = document.getElementById("dlg-les");
+const dlgKopie = document.getElementById("dlg-kopie");
+
+async function laadKlassen(){
+  klassen = await api.get("klassen");
+  const el = document.getElementById("klas-list");
+  el.innerHTML = "";
+  for(const k of klassen){
+    const c = document.createElement("div");
+    c.className = "klas-card" + (huidigeKlas && huidigeKlas.id===k.id ? " active" : "");
+    c.innerHTML = `<span class="n"></span><span class="badge">${k.aantal} les${k.aantal===1?"":"sen"}</span>`;
+    c.querySelector(".n").textContent = k.naam;
+    c.onclick = () => kiesKlas(k);
+    el.appendChild(c);
+  }
+  if(!klassen.length)
+    el.innerHTML = `<div class="empty">Nog geen klassen.<br>Begin met “+ Nieuwe klas”.</div>`;
+}
+
+async function nieuweKlas(){
+  const naam = prompt("Naam van de klas (bijv. H4B):");
+  if(!naam) return;
+  await api.send("POST","klassen",{naam});
+  laadKlassen();
+}
+
+async function kiesKlas(k){
+  huidigeKlas = k;
+  laadKlassen();
+  const lessen = await api.get(`klassen/${k.id}/lessen`);
+  const p = document.getElementById("les-panel");
+  p.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "row"; head.style.marginBottom = "10px";
+  head.innerHTML = `<strong style="flex:1;font-size:17px"></strong>
+    <button class="primary" onclick="openDlgLes()">+ Nieuwe les</button>
+    <button class="icon-btn" onclick="openDlgNamen()" title="Leerlingen beheren">👥 <span id="namen-teller"></span></button>
+    <button class="icon-btn" onclick="hernoemKlas()" title="Klas hernoemen">✎</button>
+    <button class="icon-btn" onclick="verwijderKlas()" title="Klas verwijderen">🗑</button>`;
+  head.querySelector("strong").textContent = k.naam;
+  head.querySelector("#namen-teller").textContent = (k.leerlingen||[]).length || "";
+  p.appendChild(head);
+  if(!lessen.length){
+    p.insertAdjacentHTML("beforeend", `<div class="empty">Nog geen lessen voor deze klas.</div>`);
+    return;
+  }
+  for(const l of lessen){
+    const r = document.createElement("div");
+    r.className = "les-row";
+    r.innerHTML = `<span class="d">${nlDatum(l.datum)}</span><span class="t"></span>
+      <button class="icon-btn" title="Kopiëren naar klas…">⧉</button>
+      <button class="icon-btn" title="Verwijderen">🗑</button>`;
+    r.querySelector(".t").textContent = l.titel;
+    r.querySelector(".t").onclick = () => openLes(l.id);
+    const [btnKopie, btnDel] = r.querySelectorAll("button");
+    btnKopie.onclick = () => openDlgKopie(l.id);
+    btnDel.onclick = async () => {
+      if(confirm(`Les “${l.titel}” verwijderen?`)){ await api.send("DELETE",`lessen/${l.id}`); kiesKlas(k); }
+    };
+    p.appendChild(r);
+  }
+}
+
+function nlDatum(iso){
+  const [j,m,d] = iso.split("-");
+  return `${d}-${m}-${j.slice(2)}`;
+}
+
+async function hernoemKlas(){
+  const naam = prompt("Nieuwe naam:", huidigeKlas.naam);
+  if(!naam) return;
+  await api.send("PUT",`klassen/${huidigeKlas.id}`,{naam});
+  huidigeKlas.naam = naam;
+  laadKlassen(); kiesKlas(huidigeKlas);
+}
+const dlgNamen = document.getElementById("dlg-namen");
+function openDlgNamen(){
+  document.getElementById("dlg-namen-klas").textContent = huidigeKlas.naam;
+  document.getElementById("dlg-namen-tekst").value = (huidigeKlas.leerlingen||[]).join("\n");
+  telNamen();
+  dlgNamen.showModal();
+}
+function telNamen(){
+  const n = document.getElementById("dlg-namen-tekst").value.split("\n").filter(r=>r.trim()).length;
+  document.getElementById("dlg-namen-aantal").textContent = n + " leerling" + (n===1?"":"en");
+}
+document.getElementById("dlg-namen-tekst").addEventListener("input", telNamen);
+async function bewaarNamen(){
+  const namen = document.getElementById("dlg-namen-tekst").value.split("\n").map(r=>r.trim()).filter(Boolean);
+  await api.send("PUT",`klassen/${huidigeKlas.id}/leerlingen`,{namen});
+  huidigeKlas.leerlingen = namen;
+  dlgNamen.close();
+  kiesKlas(huidigeKlas);
+}
+
+async function verwijderKlas(){
+  if(!confirm(`Klas “${huidigeKlas.naam}” en alle lessen verwijderen?`)) return;
+  await api.send("DELETE",`klassen/${huidigeKlas.id}`);
+  huidigeKlas = null;
+  document.getElementById("les-panel").innerHTML = `<div class="empty">Kies links een klas.</div>`;
+  laadKlassen();
+}
+
+function openDlgLes(){
+  document.getElementById("dlg-les-titel").value = "";
+  document.getElementById("dlg-les-datum").value = new Date().toISOString().slice(0,10);
+  dlgLes.showModal();
+}
+async function maakLes(){
+  const titel = document.getElementById("dlg-les-titel").value.trim() || "Les";
+  const datum = document.getElementById("dlg-les-datum").value;
+  const r = await api.send("POST",`klassen/${huidigeKlas.id}/lessen`,{titel,datum});
+  dlgLes.close();
+  openLes(r.id);
+}
+function openDlgKopie(lesId){
+  kopieLesId = lesId;
+  const sel = document.getElementById("dlg-kopie-klas");
+  sel.innerHTML = "";
+  for(const k of klassen){
+    const o = document.createElement("option");
+    o.value = k.id; o.textContent = k.naam;
+    sel.appendChild(o);
+  }
+  document.getElementById("dlg-kopie-datum").value = new Date().toISOString().slice(0,10);
+  dlgKopie.showModal();
+}
+async function doeKopie(){
+  await api.send("POST",`lessen/${kopieLesId}/kopieer`,{
+    klas_id:+document.getElementById("dlg-kopie-klas").value,
+    datum:document.getElementById("dlg-kopie-datum").value});
+  dlgKopie.close();
+  kiesKlas(huidigeKlas);
+}
+
+/* ============ LES-STATE ============ */
+let les = null;          // {id, titel, klas_naam, content:{doelen, theorie, opgaven:[...]}}
+let actieveOpgave = 0;
+let dirty = false, saveTimer = null;
+
+function leegOpgave(naam){ return {naam:naam, snippet:null, strokes:[], vp:{x:-60,y:-60,s:1}}; }
+
+async function openLes(id){
+  les = await api.get("lessen/"+id);
+  const c = les.content;
+  if(!c.opgaven || !c.opgaven.length) c.opgaven = [leegOpgave("1")];
+  c.doelen = c.doelen || ""; c.theorie = c.theorie || "";
+  actieveOpgave = 0;
+  document.getElementById("home").style.display = "none";
+  document.getElementById("les").classList.add("open");
+  document.getElementById("crumb").textContent = `${les.klas_naam} · ${nlDatum(les.datum)} · ${les.titel}`;
+  document.getElementById("doelen").innerHTML = c.doelen;
+  document.getElementById("theorie").innerHTML = c.theorie;
+  renderTabs(); renderSnippet(); renderGroepen(); renderAanwezig();
+  document.getElementById("groepen-paneel").classList.remove("open");
+  undoStack = [];
+  requestAnimationFrame(resizeBoard);
+  zetSaveState("");
+  toonStart();
+}
+
+function sluitLes(){
+  document.getElementById("start-scherm").classList.remove("open");
+  flushSave();
+  stopTimer();
+  document.getElementById("les").classList.remove("open");
+  document.getElementById("home").style.display = "";
+  if(huidigeKlas) kiesKlas(huidigeKlas); else laadKlassen();
+  les = null;
+}
+
+function markDirty(){
+  dirty = true;
+  zetSaveState("wijzigingen…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 1500);
+}
+async function flushSave(){
+  if(!dirty || !les) return;
+  dirty = false;
+  les.content.doelen = document.getElementById("doelen").innerHTML;
+  les.content.theorie = document.getElementById("theorie").innerHTML;
+  zetSaveState("opslaan…");
+  try{ await api.send("PUT","lessen/"+les.id,{content:les.content}); zetSaveState("✓ opgeslagen"); }
+  catch{ zetSaveState("⚠ niet opgeslagen"); dirty = true; }
+}
+function zetSaveState(t){ document.getElementById("savestate").textContent = t; }
+document.getElementById("doelen").addEventListener("input", markDirty);
+document.getElementById("theorie").addEventListener("input", markDirty);
+window.addEventListener("beforeunload", () => { if(dirty) flushSave(); });
+
+function toggleTheorie(){
+  const w = document.getElementById("theorie-wrap");
+  w.classList.toggle("dicht");
+  document.getElementById("theorie-pijl").textContent = w.classList.contains("dicht") ? "▸" : "▾";
+  requestAnimationFrame(resizeBoard);
+}
+
+/* ============ OPGAVEN / SNIPPET ============ */
+function renderTabs(){
+  const el = document.getElementById("opgave-tabs");
+  el.innerHTML = "";
+  les.content.opgaven.forEach((o,i)=>{
+    const b = document.createElement("button");
+    b.className = "otab" + (i===actieveOpgave ? " active" : "");
+    b.textContent = o.naam;
+    b.title = "Dubbelklik om te hernoemen";
+    b.onclick = () => { actieveOpgave = i; renderTabs(); renderSnippet(); teken(); };
+    b.ondblclick = () => {
+      const n = prompt("Naam:", o.naam);
+      if(n){ o.naam = n; markDirty(); renderTabs(); }
+    };
+    el.appendChild(b);
+  });
+  const plus = document.createElement("button");
+  plus.className = "otab"; plus.textContent = "+";
+  plus.title = "Nieuwe opgave";
+  plus.onclick = () => {
+    const naam = prompt("Nummer/naam van de opgave:", "");
+    if(naam === null) return;
+    les.content.opgaven.push(leegOpgave(naam.trim() || "Opgave"));
+    actieveOpgave = les.content.opgaven.length-1;
+    markDirty(); renderTabs(); renderSnippet(); teken();
+  };
+  el.appendChild(plus);
+  if(les.content.opgaven.length > 1){
+    const del = document.createElement("button");
+    del.className = "otab"; del.textContent = "×";
+    del.title = "Actieve opgave verwijderen";
+    del.onclick = () => {
+      if(!confirm(`“${les.content.opgaven[actieveOpgave].naam}” verwijderen (inclusief bord)?`)) return;
+      les.content.opgaven.splice(actieveOpgave,1);
+      actieveOpgave = Math.max(0, actieveOpgave-1);
+      markDirty(); renderTabs(); renderSnippet(); teken();
+    };
+    el.appendChild(del);
+  }
+}
+
+function renderSnippet(){
+  const el = document.getElementById("snippet");
+  const o = les.content.opgaven[actieveOpgave];
+  el.innerHTML = "";
+  if(o.snippet){
+    const img = document.createElement("img");
+    img.src = o.snippet;
+    el.appendChild(img);
+    const b = document.createElement("button");
+    b.textContent = "Snippet vervangen";
+    b.style.marginTop = "10px";
+    b.onclick = () => { o.snippet = null; markDirty(); renderSnippet(); el.focus(); };
+    el.appendChild(b);
+  }else{
+    el.innerHTML = `<div class="hint">Klik hier en plak een<br>screenshot van de opgave<br>(Ctrl+V)</div>`;
+  }
+}
+
+/* ============ PLAKKEN ============ */
+document.addEventListener("paste", async e => {
+  if(!les) return;
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+  if(!item) return;                       // gewone tekst: laat de browser z'n gang gaan
+  e.preventDefault();
+  const blob = item.getAsFile();
+  const act = document.activeElement;
+  // startscherm open: afspraken-vak of startopdracht
+  if(document.getElementById("start-scherm").classList.contains("open")){
+    if(act === document.getElementById("afspraken-zone")){
+      zetAfspraken(blob);
+    }else{
+      let url;
+      try{ url = await api.upload(blob); }
+      catch{ alert("Afbeelding uploaden mislukt."); return; }
+      document.getElementById("startopdracht").focus();
+      document.execCommand("insertHTML", false, `<img src="${url}">`);
+      les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
+      markDirty();
+    }
+    return;
+  }
+  let url;
+  try{ url = await api.upload(blob); }
+  catch{ alert("Afbeelding uploaden mislukt."); return; }
+  const theorie = document.getElementById("theorie");
+  const inTheorie = act === theorie || theorie.contains(act);
+  const inDoelen = act === document.getElementById("doelen");
+  if(inTheorie || inDoelen){
+    document.execCommand("insertHTML", false, `<img src="${url}">`);
+  }else{
+    les.content.opgaven[actieveOpgave].snippet = url;
+    renderSnippet();
+  }
+  markDirty();
+});
+
+/* ============ SPLITTER ============ */
+(function(){
+  const sp = document.getElementById("splitter"), kol = document.getElementById("opgave-kolom");
+  let slepen = false;
+  sp.addEventListener("pointerdown", e => { slepen = true; sp.setPointerCapture(e.pointerId); });
+  sp.addEventListener("pointermove", e => {
+    if(!slepen) return;
+    kol.style.width = Math.max(220, e.clientX) + "px";
+    resizeBoard();
+  });
+  sp.addEventListener("pointerup", () => slepen = false);
+})();
+
+/* ============ BORD (canvas) ============ */
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const RUIT = 32;                          // ruitjesgrootte in wereld-eenheden
+let tool = "pen", kleur = "#1d4ed8", diktes = [2.5, 4.5, 8], dikteIdx = 0;
+let undoStack = [];
+
+function vp(){ return les.content.opgaven[actieveOpgave].vp; }
+function strokes(){ return les.content.opgaven[actieveOpgave].strokes; }
+
+function resizeBoard(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  teken();
+}
+window.addEventListener("resize", resizeBoard);
+// Herkalibreer bij élke maatverandering van het bord (theorie in/uitklappen,
+// afbeeldingen die later laden, splitter, browserzoom) — anders tekent de
+// pen met een offset t.o.v. de cursor.
+new ResizeObserver(() => resizeBoard()).observe(document.getElementById("board-wrap"));
+
+function teken(){
+  if(!les) return;
+  const v = vp(), W = canvas.clientWidth, H = canvas.clientHeight;
+  ctx.clearRect(0,0,W,H);
+  // ruitjes — bij ver uitzoomen grovere maat zodat het rustig blijft
+  let stap = RUIT;
+  while(stap * v.s < 14) stap *= 5;
+  ctx.strokeStyle = "#d9e3f2";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const x0 = Math.floor(v.x/stap)*stap, y0 = Math.floor(v.y/stap)*stap;
+  for(let x=x0; x < v.x + W/v.s; x += stap){
+    const sx = (x - v.x)*v.s; ctx.moveTo(sx,0); ctx.lineTo(sx,H);
+  }
+  for(let y=y0; y < v.y + H/v.s; y += stap){
+    const sy = (y - v.y)*v.s; ctx.moveTo(0,sy); ctx.lineTo(W,sy);
+  }
+  ctx.stroke();
+  // strokes
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for(const s of strokes()) tekenStroke(s, v);
+  document.getElementById("zoomlbl").textContent = Math.round(v.s*100) + "%";
+}
+
+function tekenStroke(s, v){
+  const p = s.pts;
+  if(p.length < 2){
+    ctx.fillStyle = s.c;
+    ctx.beginPath();
+    ctx.arc((p[0][0]-v.x)*v.s, (p[0][1]-v.y)*v.s, s.w*v.s/2, 0, 7);
+    ctx.fill();
+    return;
+  }
+  ctx.strokeStyle = s.c;
+  ctx.lineWidth = s.w * v.s;
+  ctx.beginPath();
+  ctx.moveTo((p[0][0]-v.x)*v.s, (p[0][1]-v.y)*v.s);
+  for(let i=1; i<p.length-1; i++){
+    const mx = (p[i][0]+p[i+1][0])/2, my = (p[i][1]+p[i+1][1])/2;
+    ctx.quadraticCurveTo((p[i][0]-v.x)*v.s, (p[i][1]-v.y)*v.s, (mx-v.x)*v.s, (my-v.y)*v.s);
+  }
+  const l = p[p.length-1];
+  ctx.lineTo((l[0]-v.x)*v.s, (l[1]-v.y)*v.s);
+  ctx.stroke();
+}
+
+function s2w(sx, sy){ const v = vp(); return [sx/v.s + v.x, sy/v.s + v.y]; }
+
+let bezig = null; // {soort:'teken'|'pan'|'gum', ...}
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+canvas.addEventListener("pointerdown", e => {
+  canvas.setPointerCapture(e.pointerId);
+  const r = canvas.getBoundingClientRect();
+  const sx = e.clientX - r.left, sy = e.clientY - r.top;
+  const pannen = tool === "hand" || e.button === 1 || e.button === 2;
+  if(pannen){
+    bezig = {soort:"pan", sx, sy, x0:vp().x, y0:vp().y};
+    canvas.style.cursor = "grabbing";
+  }else if(tool === "pen" && e.button === 0){
+    snapshot();
+    const w = s2w(sx, sy);
+    bezig = {soort:"teken", stroke:{c:kleur, w:diktes[dikteIdx], pts:[w]}};
+    strokes().push(bezig.stroke);
+    teken();
+  }else if(tool === "gum" && e.button === 0){
+    bezig = {soort:"gum", gewist:false};
+    gum(sx, sy);
+  }
+});
+canvas.addEventListener("pointermove", e => {
+  if(!bezig) return;
+  const r = canvas.getBoundingClientRect();
+  const sx = e.clientX - r.left, sy = e.clientY - r.top;
+  if(bezig.soort === "pan"){
+    const v = vp();
+    v.x = bezig.x0 - (sx - bezig.sx)/v.s;
+    v.y = bezig.y0 - (sy - bezig.sy)/v.s;
+    teken();
+  }else if(bezig.soort === "teken"){
+    const w = s2w(sx, sy), p = bezig.stroke.pts, last = p[p.length-1];
+    if(Math.hypot(w[0]-last[0], w[1]-last[1]) > 1.5/vp().s){ p.push(w); teken(); }
+  }else if(bezig.soort === "gum"){
+    gum(sx, sy);
+  }
+});
+canvas.addEventListener("pointerup", () => {
+  if(bezig && (bezig.soort === "teken" || (bezig.soort === "gum" && bezig.gewist) || bezig.soort === "pan")) markDirty();
+  bezig = null;
+  canvas.style.cursor = tool === "hand" ? "grab" : "crosshair";
+});
+
+function gum(sx, sy){
+  const [wx, wy] = s2w(sx, sy);
+  const drempel = 12 / vp().s;
+  const arr = strokes();
+  for(let i = arr.length-1; i >= 0; i--){
+    if(raakt(arr[i], wx, wy, drempel)){
+      if(!bezig.gewist){ snapshot(); bezig.gewist = true; }
+      arr.splice(i,1);
+      teken();
+      return;
+    }
+  }
+}
+function raakt(s, x, y, d){
+  const p = s.pts, marge = d + s.w/2;
+  if(p.length === 1) return Math.hypot(x-p[0][0], y-p[0][1]) < marge;
+  for(let i=0; i<p.length-1; i++)
+    if(afstandSeg(x, y, p[i], p[i+1]) < marge) return true;
+  return false;
+}
+function afstandSeg(x, y, a, b){
+  const dx = b[0]-a[0], dy = b[1]-a[1];
+  const l2 = dx*dx + dy*dy;
+  let t = l2 ? ((x-a[0])*dx + (y-a[1])*dy)/l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(x - (a[0]+t*dx), y - (a[1]+t*dy));
+}
+
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const v = vp();
+  const r = canvas.getBoundingClientRect();
+  if(e.ctrlKey){
+    const f = e.deltaY < 0 ? 1.1 : 1/1.1;
+    zoomOp(f, e.clientX - r.left, e.clientY - r.top);
+  }else{
+    v.x += (e.shiftKey ? e.deltaY : e.deltaX)/v.s;
+    v.y += (e.shiftKey ? 0 : e.deltaY)/v.s;
+    teken(); markDirty();
+  }
+},{passive:false});
+
+function zoomOp(f, sx, sy){
+  const v = vp();
+  const [wx, wy] = s2w(sx, sy);
+  v.s = Math.max(.15, Math.min(6, v.s * f));
+  v.x = wx - sx/v.s;
+  v.y = wy - sy/v.s;
+  teken(); markDirty();
+}
+function zoomStap(f){ zoomOp(f, canvas.clientWidth/2, canvas.clientHeight/2); }
+function resetView(){
+  const v = vp(); v.x = -60; v.y = -60; v.s = 1;
+  teken(); markDirty();
+}
+
+function snapshot(){
+  undoStack.push({op:actieveOpgave, data:JSON.stringify(strokes())});
+  if(undoStack.length > 60) undoStack.shift();
+}
+function undo(){
+  const s = undoStack.pop();
+  if(!s) return;
+  if(s.op !== actieveOpgave){ actieveOpgave = s.op; renderTabs(); renderSnippet(); }
+  les.content.opgaven[s.op].strokes = JSON.parse(s.data);
+  teken(); markDirty();
+}
+function wisBord(){
+  if(!strokes().length) return;
+  if(!confirm("Alle inkt van deze opgave wissen?")) return;
+  snapshot();
+  les.content.opgaven[actieveOpgave].strokes = [];
+  teken(); markDirty();
+}
+
+function setTool(t){
+  tool = t;
+  for(const id of ["pen","gum","hand"])
+    document.getElementById("tool-"+id).classList.toggle("on", id===t);
+  canvas.style.cursor = t === "hand" ? "grab" : "crosshair";
+}
+document.querySelectorAll(".kleur").forEach(b => b.onclick = () => {
+  kleur = b.dataset.c;
+  document.querySelectorAll(".kleur").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  if(tool !== "pen") setTool("pen");
+});
+function wisselDikte(){
+  dikteIdx = (dikteIdx+1) % diktes.length;
+  const el = document.getElementById("dikte");
+  el.textContent = "—";
+  el.style.fontWeight = ["400","700","900"][dikteIdx];
+  el.style.fontSize = ["15px","17px","19px"][dikteIdx];
+}
+
+document.addEventListener("keydown", e => {
+  if(!les) return;
+  const inTekst = e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !inTekst){ e.preventDefault(); undo(); return; }
+  if(inTekst || e.ctrlKey || e.metaKey) return;
+  if(e.key === "p" || e.key === "P") setTool("pen");
+  if(e.key === "g" || e.key === "G") setTool("gum");
+  if(e.key === "h" || e.key === "H") setTool("hand");
+});
+
+/* ============ STARTSCHERM ============ */
+let instellingen = {};
+
+async function laadInstellingen(){
+  try{ instellingen = await api.get("instellingen"); }catch{ instellingen = {}; }
+}
+
+function renderAfspraken(){
+  const z = document.getElementById("afspraken-zone");
+  z.innerHTML = "";
+  if(instellingen.afspraken){
+    const img = document.createElement("img");
+    img.src = instellingen.afspraken;
+    z.appendChild(img);
+  }else{
+    z.innerHTML = `<div class="leeg">Nog geen afsprakenposter.<br>Kies hieronder een afbeelding,<br>of klik hier en plak (Ctrl+V).</div>`;
+  }
+}
+
+async function zetAfspraken(blob){
+  let url;
+  try{ url = await api.upload(blob); }
+  catch{ alert("Afbeelding uploaden mislukt."); return; }
+  instellingen.afspraken = url;
+  await api.send("PUT","instellingen/afspraken",{waarde:url});
+  renderAfspraken();
+}
+
+document.getElementById("afspraken-file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if(f) zetAfspraken(f);
+  e.target.value = "";
+});
+
+function toonStart(){
+  document.getElementById("start-kop-info").textContent =
+    `${les.klas_naam} · ${les.titel}`;
+  document.getElementById("startopdracht").innerHTML = les.content.startopdracht || "";
+  renderAfspraken();
+  document.getElementById("start-scherm").classList.add("open");
+}
+
+function sluitStart(){
+  les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
+  markDirty();
+  document.getElementById("start-scherm").classList.remove("open");
+  requestAnimationFrame(resizeBoard);
+}
+
+function startDeLes(){
+  sluitStart();
+}
+
+document.getElementById("startopdracht").addEventListener("input", () => {
+  les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
+  markDirty();
+});
+
+/* ============ GROEPJES ============ */
+let groepGrootte = 3;
+document.querySelectorAll(".gmaat").forEach(b => b.onclick = () => {
+  groepGrootte = +b.dataset.n;
+  document.querySelectorAll(".gmaat").forEach(x => x.classList.toggle("on", x===b));
+});
+function toggleGroepen(){
+  document.getElementById("groepen-paneel").classList.toggle("open");
+}
+function afwezig(){ return les.content.afwezig || (les.content.afwezig = []); }
+function renderAanwezig(){
+  const el = document.getElementById("aanwezig-lijst");
+  el.innerHTML = "";
+  const lln = les.leerlingen || [];
+  for(const naam of lln){
+    const b = document.createElement("button");
+    b.className = "lln-chip" + (afwezig().includes(naam) ? " afwezig" : "");
+    b.textContent = naam;
+    b.onclick = () => {
+      const a = afwezig(), i = a.indexOf(naam);
+      i >= 0 ? a.splice(i,1) : a.push(naam);
+      markDirty(); renderAanwezig();
+    };
+    el.appendChild(b);
+  }
+  const aanw = lln.length - afwezig().filter(n => lln.includes(n)).length;
+  document.getElementById("aanwezig-teller").textContent = lln.length ? `(${aanw}/${lln.length})` : "";
+}
+function maakGroepjes(){
+  const namen = (les.leerlingen || []).filter(n => !afwezig().includes(n));
+  if(namen.length < 2){
+    document.getElementById("groepen-lijst").innerHTML = (les.leerlingen||[]).length
+      ? `<p class="muted" style="font-size:14px">Minder dan 2 aanwezige leerlingen — check de aanwezigheid hierboven.</p>`
+      : `<p class="muted" style="font-size:14px">Geen leerlingen bekend voor ${les.klas_naam}.<br>Voeg ze toe via 👥 op het beginscherm.</p>`;
+    return;
+  }
+  // Fisher–Yates
+  for(let i = namen.length-1; i > 0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [namen[i], namen[j]] = [namen[j], namen[i]];
+  }
+  // aantal groepen ≈ n/grootte; iedereen ingedeeld, niemand alleen,
+  // groottes verschillen onderling hooguit 1
+  const n = namen.length;
+  let aantal = Math.max(1, Math.round(n / groepGrootte));
+  while(aantal > 1 && Math.floor(n / aantal) < 2) aantal--;
+  const basis = Math.floor(n / aantal), rest = n % aantal;
+  const groepen = [];
+  let idx = 0;
+  for(let i = 0; i < aantal; i++){
+    const maat = basis + (i < rest ? 1 : 0);
+    groepen.push(namen.slice(idx, idx + maat));
+    idx += maat;
+  }
+  les.content.groepjes = groepen;
+  markDirty();
+  renderGroepen();
+}
+function renderGroepen(){
+  const el = document.getElementById("groepen-lijst");
+  el.innerHTML = "";
+  for(const [i, g] of (les.content.groepjes || []).entries()){
+    const k = document.createElement("div");
+    k.className = "groep-kaart";
+    k.innerHTML = `<h4>Groepje ${i+1}</h4><div></div>`;
+    k.querySelector("div").textContent = g.join(" · ");
+    el.appendChild(k);
+  }
+}
+
+/* ============ TIMER ============ */
+let timerEind = null, timerRest = null, timerTick = null;
+
+function toggleTimerMenu(){
+  document.getElementById("timer-menu").classList.toggle("open");
+}
+document.getElementById("timer-menu").addEventListener("click", e => e.stopPropagation());
+function startTimer(min){
+  min = min || +document.getElementById("timer-min").value;
+  if(!min || min <= 0) return;
+  timerEind = Date.now() + min*60000;
+  timerRest = null;
+  document.getElementById("timer-pauze").textContent = "Pauze";
+  clearInterval(timerTick);
+  timerTick = setInterval(tikTimer, 500);
+  tikTimer();
+  document.getElementById("timer-menu").classList.remove("open");
+}
+function pauzeerTimer(){
+  if(timerEind){                          // pauzeren
+    timerRest = timerEind - Date.now();
+    timerEind = null;
+    clearInterval(timerTick);
+    document.getElementById("timer-pauze").textContent = "Hervat";
+  }else if(timerRest){                    // hervatten
+    timerEind = Date.now() + timerRest;
+    timerRest = null;
+    timerTick = setInterval(tikTimer, 500);
+    document.getElementById("timer-pauze").textContent = "Pauze";
+  }
+}
+function stopTimer(){
+  clearInterval(timerTick);
+  timerEind = timerRest = null;
+  document.getElementById("timer-tijd").textContent = "–:–";
+  document.getElementById("timer").classList.remove("warn");
+  document.getElementById("timer-menu").classList.remove("open");
+}
+function tikTimer(){
+  const ms = timerEind - Date.now();
+  const el = document.getElementById("timer-tijd");
+  if(ms <= 0){
+    el.textContent = "0:00";
+    document.getElementById("timer").classList.add("warn");
+    clearInterval(timerTick);
+    return;
+  }
+  const m = Math.floor(ms/60000), s = Math.floor(ms/1000)%60;
+  el.textContent = `${m}:${String(s).padStart(2,"0")}`;
+  document.getElementById("timer").classList.toggle("warn", ms < 5*60000);
+}
+
+/* ============ start ============ */
+laadInstellingen();
+laadKlassen();
+</script>
+</body>
+</html>

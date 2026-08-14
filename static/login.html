@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesbord — inloggen</title>
+<style>
+  :root{
+    --ink:#1c2733; --muted:#66717f; --paper:#f4f6f3; --panel:#ffffff;
+    --accent:#2451b3; --accent-soft:#e8eefb; --line:#dde3ea; --warn:#c62828;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);
+       background:var(--paper);display:flex;align-items:center;justify-content:center}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        padding:32px;width:min(360px,92vw);box-shadow:0 6px 24px rgba(28,39,51,.06)}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+  p.sub{margin:0 0 22px;color:var(--muted)}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input{font:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);
+        border-radius:8px;background:#fff}
+  input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  button{font:inherit;cursor:pointer;width:100%;margin-top:16px;border:1px solid var(--accent);
+         background:var(--accent);color:#fff;border-radius:8px;padding:10px 14px;font-weight:600}
+  button:hover{filter:brightness(1.05)}
+  button:disabled{opacity:.6;cursor:default}
+  .err{color:var(--warn);font-size:13px;margin-top:12px;min-height:18px}
+</style>
+</head>
+<body>
+  <form class="card" id="form">
+    <h1>Lesbord</h1>
+    <p class="sub">Voer het wachtwoord in om verder te gaan.</p>
+    <label for="pw">Wachtwoord</label>
+    <input id="pw" type="password" autocomplete="current-password" autofocus>
+    <button id="btn" type="submit">Inloggen</button>
+    <div class="err" id="err"></div>
+  </form>
+<script>
+  const form = document.getElementById("form");
+  const pw   = document.getElementById("pw");
+  const btn  = document.getElementById("btn");
+  const err  = document.getElementById("err");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    err.textContent = "";
+    btn.disabled = true;
+    try {
+      const res = await fetch("api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wachtwoord: pw.value }),
+      });
+      if (res.ok) {
+        // Relatief, zodat het ook onder een subpad (/lesbord/) klopt.
+        window.location.href = "./";
+        return;
+      }
+      err.textContent = res.status === 401
+        ? "Onjuist wachtwoord."
+        : "Er ging iets mis. Probeer opnieuw.";
+    } catch {
+      err.textContent = "Geen verbinding met de server.";
+    } finally {
+      btn.disabled = false;
+      pw.select();
+    }
+  });
+</script>
+</body>
+</html>
