@@ -245,8 +245,13 @@ def _huiswerk_klas_stats(naam: str) -> Optional[dict]:
             "SELECT id, voornaam FROM leerling WHERE klas_id=? ORDER BY volgorde, voornaam",
             (k["id"],),
         ).fetchall()
+        opdrachten = con.execute(
+            "SELECT id, nummer, datum, periode, hoofdstuk FROM opdracht WHERE klas_id=? "
+            "ORDER BY periode, volgorde, id",
+            (k["id"],),
+        ).fetchall()
         statussen = con.execute(
-            """SELECT s.leerling_id AS lid, s.waarde AS w
+            """SELECT s.leerling_id AS lid, s.opdracht_id AS oid, s.waarde AS w
                FROM status s JOIN leerling l ON l.id = s.leerling_id
                WHERE l.klas_id = ?""",
             (k["id"],),
@@ -254,37 +259,58 @@ def _huiswerk_klas_stats(naam: str) -> Optional[dict]:
     finally:
         con.close()
 
-    groen: dict[int, int] = {}
-    rood: dict[int, int] = {}
-    for r in statussen:
-        if r["w"] == 1:
-            groen[r["lid"]] = groen.get(r["lid"], 0) + 1
-        elif r["w"] == 2:
-            rood[r["lid"]] = rood.get(r["lid"], 0) + 1
+    n = len(leerlingen)
+    stat = {(r["lid"], r["oid"]): r["w"] for r in statussen}
 
+    # Per leerling (voor namen-overname en het gemiddelde).
     uit, procenten = [], []
     for l in leerlingen:
-        g, rd = groen.get(l["id"], 0), rood.get(l["id"], 0)
+        g = sum(1 for o in opdrachten if stat.get((l["id"], o["id"])) == 1)
+        rd = sum(1 for o in opdrachten if stat.get((l["id"], o["id"])) == 2)
         gecontroleerd = g + rd
         pct = round(g / gecontroleerd * 100) if gecontroleerd else None
         if pct is not None:
             procenten.append(pct)
-        uit.append(
+        uit.append({"voornaam": l["voornaam"], "procent": pct, "gemaakt": g, "nietgemaakt": rd})
+
+    # Per controlemoment (elke opdracht) de klas-verdeling groen/rood/grijs.
+    momenten, tot_g, tot_r = [], 0, 0
+    for o in opdrachten:
+        g = sum(1 for l in leerlingen if stat.get((l["id"], o["id"])) == 1)
+        rd = sum(1 for l in leerlingen if stat.get((l["id"], o["id"])) == 2)
+        grijs = n - g - rd
+        label = ((o["hoofdstuk"] + " ") if o["hoofdstuk"] else "") + o["nummer"]
+        momenten.append(
             {
-                "voornaam": l["voornaam"],
-                "procent": pct,
-                "gemaakt": g,
-                "nietgemaakt": rd,
-                "gecontroleerd": gecontroleerd,
+                "label": label,
+                "datum": o["datum"],
+                "periode": o["periode"],
+                "groen": g,
+                "rood": rd,
+                "grijs": grijs,
+                "procent": round(g / (g + rd) * 100) if g + rd else None,
             }
         )
+        tot_g += g
+        tot_r += rd
+
+    totaal_cellen = n * len(opdrachten)
+    totaal = {
+        "groen": tot_g,
+        "rood": tot_r,
+        "grijs": totaal_cellen - tot_g - tot_r,
+        "procent": round(tot_g / (tot_g + tot_r) * 100) if tot_g + tot_r else None,
+    }
     gemiddelde = round(sum(procenten) / len(procenten)) if procenten else None
     return {
         "gekoppeld": True,
         "huiswerk_klas_id": k["id"],
         "naam": k["naam"],
+        "aantal_leerlingen": n,
         "leerlingen": uit,
         "gemiddelde": gemiddelde,
+        "totaal": totaal,
+        "momenten": momenten,
     }
 
 

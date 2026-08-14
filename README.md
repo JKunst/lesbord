@@ -25,8 +25,12 @@ opgeslagen.
   aanwezigheid (tik een naam aan = afwezig) en een hussel-knop voor
   groepjes van 2, 3 of 4. Namen zet je per klas op het beginscherm — of
   neem ze over uit de huiswerkcontrole (knop **↓ Uit huiswerkcontrole** in
-  het namenvenster). Onder in het paneel staat ook het blok **Huiswerk** met
-  het percentage gemaakt huiswerk per leerling (uit de huiswerkcontrole).
+  het namenvenster).
+- **Huiswerkbalk**: in de balk bovenin een les staat een groen/rood/grijs
+  balkje met het klaspercentage gemaakt huiswerk (groen = gemaakt, rood =
+  niet gemaakt, grijs = nog niet gecontroleerd). Klik erop voor eenzelfde
+  balkje per controlemoment. De cijfers komen live uit de huiswerkcontrole
+  en verschijnen alleen als er een klas met dezelfde naam bestaat.
 - **Timer**: klik op de klok rechtsonder, kies een preset of aantal minuten.
   Onder de 5 minuten wordt hij rood.
 - **Les kopiëren**: in het overzicht via ⧉ — handig als je dezelfde les aan
@@ -46,8 +50,8 @@ naam in beide, hoofdletterongevoelig). Zolang die overeenkomt:
 
 - neem je de leerlingnamen in het lesbord over uit de huiswerkcontrole met
   **↓ Uit huiswerkcontrole** in het namenvenster (👥 op het beginscherm), en
-- zie je in het groepjespaneel (👥 op het bord) per leerling het percentage
-  gemaakt huiswerk plus het klasgemiddelde.
+- zie je in de balk bovenin een les de huiswerkbalk (groen/rood/grijs) met
+  het klaspercentage, uitklapbaar per controlemoment.
 
 Technisch is het de originele Flask-app (`huiswerk/`) die als sub-app in de
 FastAPI-server is gemount; de data staat in `huiswerk.db` naast `lesbord.db`.

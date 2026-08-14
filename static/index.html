@@ -47,11 +47,32 @@
   #les{display:none;height:100vh;flex-direction:column}
   #les.open{display:flex}
 
-  #topbar{display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
+  #topbar{position:relative;display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
   #topbar .crumb{font-size:13px;color:var(--muted);white-space:nowrap}
   #doelen{flex:1;min-width:0;font-size:17px;font-weight:600;padding:6px 10px;border-radius:8px}
   #doelen:empty::before{content:"Leerdoelen van deze les…";color:var(--muted);font-weight:400}
   #savestate{font-size:12px;color:var(--muted);white-space:nowrap;min-width:86px;text-align:right}
+
+  /* huiswerk-balk in de topbar */
+  #hw-balk{display:none;align-items:center;gap:8px;cursor:pointer;flex:none;padding:4px 6px;border-radius:8px}
+  #hw-balk:hover{background:var(--paper)}
+  #hw-balk.leeg{cursor:default}
+  #hw-balk.leeg:hover{background:none}
+  #hw-pct{font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .hw-bar{display:flex;height:12px;width:120px;border-radius:6px;overflow:hidden;background:#eef1f5;flex:none}
+  .hw-bar > i{display:block;height:100%}
+  .hw-bar .g{background:var(--ok)} .hw-bar .r{background:var(--warn)} .hw-bar .x{background:#d7dce3}
+  #hw-paneel{display:none;position:absolute;top:100%;right:14px;z-index:30;width:320px;max-height:60vh;overflow:auto;
+             background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,30,50,.14);padding:12px}
+  #hw-paneel.open{display:block}
+  .hw-moment{margin-bottom:10px}
+  .hw-moment .kop{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:3px}
+  .hw-moment .kop .naam{font-weight:600}
+  .hw-moment .kop .meta{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .hw-bar.groot{width:100%;height:14px}
+  .hw-legenda{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
+  .hw-legenda span{display:inline-flex;align-items:center;gap:5px}
+  .hw-legenda i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
   #theorie-wrap{flex:none;background:var(--panel);border-bottom:1px solid var(--line)}
   #theorie-head{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
@@ -180,7 +201,23 @@
     <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
     <span class="crumb" id="crumb"></span>
     <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
+    <div id="hw-balk" onclick="toggleHwPaneel(event)" title="Huiswerk — klik voor de controlemomenten">
+      <div class="hw-bar" id="hw-bar-mini"></div>
+      <span id="hw-pct"></span>
+    </div>
     <span id="savestate"></span>
+  </div>
+  <div id="hw-paneel">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <strong style="font-size:14px">Huiswerk per controlemoment</strong>
+      <button class="icon-btn" onclick="toggleHwPaneel(event)">✕</button>
+    </div>
+    <div id="hw-momenten"></div>
+    <div class="hw-legenda muted">
+      <span><i style="background:var(--ok)"></i>gemaakt</span>
+      <span><i style="background:var(--warn)"></i>niet gemaakt</span>
+      <span><i style="background:#d7dce3"></i>niet gecontroleerd</span>
+    </div>
   </div>
 
   <div id="theorie-wrap">
@@ -235,11 +272,6 @@
           <summary style="cursor:pointer;font-size:14px">Aanwezigheid <span id="aanwezig-teller" class="muted"></span></summary>
           <p class="muted" style="font-size:12px;margin:6px 0">Tik een naam aan om die als afwezig te markeren.</p>
           <div id="aanwezig-lijst"></div>
-        </details>
-        <details id="huiswerk-blok" style="margin-bottom:10px;display:none">
-          <summary style="cursor:pointer;font-size:14px">Huiswerk <span id="huiswerk-gem" class="muted"></span></summary>
-          <p class="muted" style="font-size:12px;margin:6px 0">% gemaakt volgens de huiswerkcontrole.</p>
-          <div id="huiswerk-lijst"></div>
         </details>
         <button class="primary" style="width:100%" onclick="maakGroepjes()">🎲 Hussel groepjes</button>
         <div id="groepen-lijst"></div>
@@ -953,29 +985,54 @@ let groepGrootte = 3;
 let huiswerkStats = null;
 async function laadHuiswerk(){
   huiswerkStats = null;
-  renderHuiswerk();
+  document.getElementById("hw-paneel").classList.remove("open");
+  renderHwBalk();
   try{ huiswerkStats = await api.get("klassen/"+les.klas_id+"/huiswerk"); }
   catch(e){ huiswerkStats = null; }
-  renderHuiswerk();
+  renderHwBalk();
 }
-function renderHuiswerk(){
-  const blok = document.getElementById("huiswerk-blok");
-  if(!huiswerkStats || !huiswerkStats.gekoppeld){ blok.style.display = "none"; return; }
-  blok.style.display = "";
-  const gem = huiswerkStats.gemiddelde;
-  document.getElementById("huiswerk-gem").textContent = gem!=null ? `— gem. ${gem}%` : "— nog niets gecontroleerd";
-  const lijst = document.getElementById("huiswerk-lijst");
-  lijst.innerHTML = "";
-  for(const l of huiswerkStats.leerlingen){
-    const p = l.procent;
-    const kleur = p==null ? "var(--muted)" : p>=80 ? "var(--ok)" : p>=50 ? "#b8860b" : "var(--warn)";
-    const rij = document.createElement("div");
-    rij.className = "hw-rij";
-    rij.innerHTML = `<span class="hw-naam"></span><span class="hw-pct" style="color:${kleur}">${p==null?'–':p+'%'}</span>`;
-    rij.querySelector(".hw-naam").textContent = l.voornaam;
-    lijst.appendChild(rij);
+// De drie segmenten (groen/rood/grijs) als innerHTML van een .hw-bar.
+function hwSegments(groen, rood, grijs){
+  const tot = groen + rood + grijs;
+  const pct = v => tot ? (v/tot*100).toFixed(2)+"%" : "0%";
+  return `<i class="g" style="width:${pct(groen)}"></i>`
+    + `<i class="r" style="width:${pct(rood)}"></i>`
+    + `<i class="x" style="width:${pct(grijs)}"></i>`;
+}
+function renderHwBalk(){
+  const balk = document.getElementById("hw-balk");
+  if(!huiswerkStats || !huiswerkStats.gekoppeld || !huiswerkStats.momenten.length){
+    balk.style.display = "none";
+    document.getElementById("hw-paneel").classList.remove("open");
+    return;
+  }
+  balk.style.display = "flex";
+  const t = huiswerkStats.totaal;
+  document.getElementById("hw-bar-mini").innerHTML = hwSegments(t.groen, t.rood, t.grijs);
+  document.getElementById("hw-pct").textContent = t.procent!=null ? t.procent+"%" : "–";
+  renderHwMomenten();
+}
+function renderHwMomenten(){
+  const el = document.getElementById("hw-momenten");
+  el.innerHTML = "";
+  for(const m of huiswerkStats.momenten){
+    const d = m.datum ? nlDatum(m.datum) : "—";
+    const div = document.createElement("div");
+    div.className = "hw-moment";
+    div.innerHTML =
+      `<div class="kop"><span class="naam"></span>`
+      + `<span class="meta">${m.procent!=null?m.procent+"% · ":""}${d}</span></div>`
+      + `<div class="hw-bar groot">${hwSegments(m.groen, m.rood, m.grijs)}</div>`;
+    div.querySelector(".naam").textContent = m.label;
+    el.appendChild(div);
   }
 }
+function toggleHwPaneel(e){
+  if(e) e.stopPropagation();
+  document.getElementById("hw-paneel").classList.toggle("open");
+}
+document.getElementById("hw-paneel").addEventListener("click", e => e.stopPropagation());
+document.addEventListener("click", () => document.getElementById("hw-paneel").classList.remove("open"));
 document.querySelectorAll(".gmaat").forEach(b => b.onclick = () => {
   groepGrootte = +b.dataset.n;
   document.querySelectorAll(".gmaat").forEach(x => x.classList.toggle("on", x===b));
