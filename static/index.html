@@ -76,9 +76,8 @@
   .hw-legenda i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
   /* Hw-blokje: huiswerk voor deze week (vrije tekst, per klas) */
-  #hw-tekst-blok{display:flex;align-items:center;gap:6px;flex:none}
-  #hw-tekst-blok .lbl{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
-  #hw-tekst{width:220px;font-size:13px;line-height:1.35;padding:6px 8px;resize:vertical;min-height:52px;max-height:120px}
+  #hw-tekst-blok{display:flex;align-items:center;flex:none}
+  #hw-tekst{width:20ch;font-size:13px;line-height:1.35;padding:6px 8px;resize:vertical;min-height:52px;max-height:120px}
 
   #theorie-wrap{flex:none;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-direction:column}
   #theorie-head{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
@@ -86,7 +85,7 @@
   #theorie{position:absolute;inset:0;padding:4px 18px 12px;overflow:auto;font-size:16px}
   #theorie img{max-width:min(680px,100%);display:block;margin:8px 0;border:1px solid var(--line);border-radius:6px}
   #theorie:empty::before{content:"Typ hier theorie, of plak een afbeelding (Ctrl+V)…";color:var(--muted)}
-  #theorie-canvas{position:absolute;inset:0;pointer-events:none;touch-action:none}
+  #theorie-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;touch-action:none}
   #theorie-canvas-wrap.tekenen #theorie-canvas{pointer-events:auto;cursor:crosshair}
   #theorie-canvas-wrap.tekenen #theorie{pointer-events:none}
   #theorie-toolbar{position:absolute;top:8px;right:12px;z-index:3;display:flex;gap:4px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 2px 8px rgba(20,30,50,.1)}
@@ -236,7 +235,6 @@
     <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
     <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
     <div id="hw-tekst-blok" title="Huiswerk voor deze week — geldt voor de hele klas">
-      <span class="lbl">Hw</span>
       <textarea id="hw-tekst" rows="3" placeholder="Huiswerk deze week…"></textarea>
     </div>
     <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
