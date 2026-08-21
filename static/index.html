@@ -48,7 +48,7 @@
   #les.open{display:flex}
 
   #topbar{position:relative;display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
-  #topbar .crumb{font-size:13px;color:var(--muted);white-space:nowrap}
+  #topbar .crumb{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;text-align:right;max-width:280px;overflow:hidden;text-overflow:ellipsis;flex:none}
   #doelen{flex:1;min-width:0;font-size:17px;font-weight:600;padding:6px 10px;border-radius:8px}
   #doelen:empty::before{content:"Leerdoelen van deze les…";color:var(--muted);font-weight:400}
   #savestate{font-size:12px;color:var(--muted);white-space:nowrap;min-width:86px;text-align:right}
@@ -74,12 +74,29 @@
   .hw-legenda span{display:inline-flex;align-items:center;gap:5px}
   .hw-legenda i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
-  #theorie-wrap{flex:none;background:var(--panel);border-bottom:1px solid var(--line)}
+  /* Hw-blokje: huiswerk voor deze week (vrije tekst, per klas) */
+  #hw-tekst-blok{display:flex;align-items:center;gap:6px;flex:none}
+  #hw-tekst-blok .lbl{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+  #hw-tekst{width:220px;font-size:13px;line-height:1.35;padding:6px 8px;resize:vertical;min-height:52px;max-height:120px}
+
+  #theorie-wrap{flex:none;background:var(--panel);border-bottom:1px solid var(--line);display:flex;flex-direction:column}
   #theorie-head{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
-  #theorie{padding:4px 18px 12px;max-height:32vh;overflow:auto;font-size:16px}
+  #theorie-canvas-wrap{position:relative;height:32vh;min-height:80px;max-height:70vh;flex:none}
+  #theorie{position:absolute;inset:0;padding:4px 18px 12px;overflow:auto;font-size:16px}
   #theorie img{max-width:min(680px,100%);display:block;margin:8px 0;border:1px solid var(--line);border-radius:6px}
   #theorie:empty::before{content:"Typ hier theorie, of plak een afbeelding (Ctrl+V)…";color:var(--muted)}
-  #theorie-wrap.dicht #theorie{display:none}
+  #theorie-canvas{position:absolute;inset:0;pointer-events:none;touch-action:none}
+  #theorie-canvas-wrap.tekenen #theorie-canvas{pointer-events:auto;cursor:crosshair}
+  #theorie-canvas-wrap.tekenen #theorie{pointer-events:none}
+  #theorie-toolbar{position:absolute;top:8px;right:12px;z-index:3;display:flex;gap:4px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 2px 8px rgba(20,30,50,.1)}
+  #theorie-toolbar button{padding:5px 8px;font-size:13px;border-radius:6px;line-height:1}
+  #theorie-toolbar button.on{background:var(--accent-soft);border-color:var(--accent)}
+  .tkleur{width:20px;height:20px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+  .tkleur.on{box-shadow:0 0 0 2px var(--accent)}
+  #theorie-resizer{height:9px;cursor:row-resize;background:transparent;flex:none;position:relative}
+  #theorie-resizer::after{content:"";position:absolute;left:50%;top:50%;width:36px;height:3px;background:var(--line);border-radius:2px;transform:translate(-50%,-50%)}
+  #theorie-resizer:hover{background:var(--accent-soft)}
+  #theorie-wrap.dicht #theorie-canvas-wrap,#theorie-wrap.dicht #theorie-resizer{display:none}
 
   #werk{flex:1;display:flex;min-height:0}
   #opgave-kolom{width:360px;min-width:220px;max-width:60vw;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line)}
@@ -217,13 +234,17 @@
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
     <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
     <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
-    <span class="crumb" id="crumb"></span>
+    <div id="hw-tekst-blok" title="Huiswerk voor deze week — geldt voor de hele klas">
+      <span class="lbl">Hw</span>
+      <textarea id="hw-tekst" rows="3" placeholder="Huiswerk deze week…"></textarea>
+    </div>
     <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
     <div id="hw-balk" onclick="toggleHwPaneel(event)" title="Huiswerk — klik voor de controlemomenten">
       <div class="hw-bar" id="hw-bar-mini"></div>
       <span id="hw-pct"></span>
     </div>
     <span id="savestate"></span>
+    <span class="crumb" id="crumb"></span>
   </div>
   <div id="hw-paneel">
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -240,7 +261,20 @@
 
   <div id="theorie-wrap">
     <div id="theorie-head" onclick="toggleTheorie()"><span id="theorie-pijl">▾</span> Theorie</div>
-    <div id="theorie" contenteditable="true" spellcheck="false"></div>
+    <div id="theorie-canvas-wrap">
+      <div id="theorie" contenteditable="true" spellcheck="false"></div>
+      <canvas id="theorie-canvas"></canvas>
+      <div id="theorie-toolbar">
+        <button id="theorie-teken-toggle" onclick="toggleTheorieTeken()" title="Tekenen aan/uit">✏️</button>
+        <button class="tkleur on" data-c="#c62828" style="background:#c62828" title="Rood"></button>
+        <button class="tkleur" data-c="#1d4ed8" style="background:#1d4ed8" title="Blauw"></button>
+        <button class="tkleur" data-c="#1c2733" style="background:#1c2733" title="Zwart"></button>
+        <button id="theorie-gum-toggle" onclick="theorieGumToggle()" title="Gum">🧽</button>
+        <button onclick="theorieUndo()" title="Ongedaan maken">↩</button>
+        <button onclick="theorieWis()" title="Tekening wissen">🗑</button>
+      </div>
+    </div>
+    <div id="theorie-resizer" title="Sleep om het theorieblok groter of kleiner te maken"></div>
   </div>
 
   <div id="werk">
@@ -594,11 +628,17 @@ async function openLes(id){
   document.getElementById("crumb").textContent = `${les.klas_naam} · ${nlDatum(les.datum)} · ${les.titel}`;
   document.getElementById("doelen").innerHTML = c.doelen;
   document.getElementById("theorie").innerHTML = c.theorie;
+  document.getElementById("hw-tekst").value = les.hw_tekst || "";
   renderTabs(); renderSnippet(); renderGroepen(); renderAanwezig();
   laadHuiswerk();
   document.getElementById("groepen-paneel").classList.remove("open");
   undoStack = [];
+  theorieUndoStack = [];
+  theorieTekenen = false;
+  document.getElementById("theorie-canvas-wrap").classList.remove("tekenen");
+  document.getElementById("theorie-teken-toggle").classList.remove("on");
   requestAnimationFrame(resizeBoard);
+  requestAnimationFrame(resizeTheorieCanvas);
   zetSaveState("");
   toonStart();
 }
@@ -639,7 +679,179 @@ function toggleTheorie(){
   w.classList.toggle("dicht");
   document.getElementById("theorie-pijl").textContent = w.classList.contains("dicht") ? "▸" : "▾";
   requestAnimationFrame(resizeBoard);
+  requestAnimationFrame(resizeTheorieCanvas);
 }
+
+/* ============ HW-BLOKJE (huiswerk deze week, per klas) ============ */
+let hwTekstTimer = null;
+document.getElementById("hw-tekst").addEventListener("input", () => {
+  clearTimeout(hwTekstTimer);
+  hwTekstTimer = setTimeout(async () => {
+    if(!les) return;
+    try{ await api.send("PUT", `klassen/${les.klas_id}/hwtekst`, {tekst: document.getElementById("hw-tekst").value}); }
+    catch{ /* stil falen — het is een losse weeknotitie, geen les-content */ }
+  }, 900);
+});
+
+/* ============ THEORIE-TEKENING (canvas over het theorieblok) ============ */
+const tCanvas = document.getElementById("theorie-canvas");
+const tCtx = tCanvas.getContext("2d");
+let theorieTekenen = false, theorieKleur = "#c62828", theorieTool = "pen";
+let theorieUndoStack = [];
+let tBezig = null;
+
+function theorieStrokes(){ return les.content.theorie_tekening || (les.content.theorie_tekening = []); }
+
+function resizeTheorieCanvas(){
+  if(!les) return;
+  const wrap = document.getElementById("theorie-canvas-wrap");
+  const r = wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  tCanvas.width = Math.max(1, Math.round(r.width * dpr));
+  tCanvas.height = Math.max(1, Math.round(r.height * dpr));
+  tCtx.setTransform(dpr,0,0,dpr,0,0);
+  tekenTheorie();
+}
+new ResizeObserver(() => resizeTheorieCanvas()).observe(document.getElementById("theorie-canvas-wrap"));
+
+function tekenTheorie(){
+  if(!les) return;
+  const W = tCanvas.clientWidth, H = tCanvas.clientHeight;
+  tCtx.clearRect(0,0,W,H);
+  tCtx.lineCap = "round"; tCtx.lineJoin = "round";
+  for(const s of theorieStrokes()) tekenTheorieStroke(s, W, H);
+}
+function tekenTheorieStroke(s, W, H){
+  const p = s.pts;
+  if(p.length < 2){
+    tCtx.fillStyle = s.c;
+    tCtx.beginPath();
+    tCtx.arc(p[0][0]*W, p[0][1]*H, s.w/2, 0, 7);
+    tCtx.fill();
+    return;
+  }
+  tCtx.strokeStyle = s.c; tCtx.lineWidth = s.w;
+  tCtx.beginPath();
+  tCtx.moveTo(p[0][0]*W, p[0][1]*H);
+  for(let i=1; i<p.length-1; i++){
+    const mx = (p[i][0]+p[i+1][0])/2, my = (p[i][1]+p[i+1][1])/2;
+    tCtx.quadraticCurveTo(p[i][0]*W, p[i][1]*H, mx*W, my*H);
+  }
+  const l = p[p.length-1];
+  tCtx.lineTo(l[0]*W, l[1]*H);
+  tCtx.stroke();
+}
+
+tCanvas.addEventListener("pointerdown", e => {
+  if(!theorieTekenen) return;
+  tCanvas.setPointerCapture(e.pointerId);
+  const r = tCanvas.getBoundingClientRect();
+  const fx = (e.clientX-r.left)/r.width, fy = (e.clientY-r.top)/r.height;
+  if(theorieTool === "pen"){
+    theorieSnapshot();
+    tBezig = {soort:"teken", stroke:{c:theorieKleur, w:3, pts:[[fx,fy]]}};
+    theorieStrokes().push(tBezig.stroke);
+    tekenTheorie();
+  }else{
+    tBezig = {soort:"gum", gewist:false};
+    theorieGum(fx, fy);
+  }
+});
+tCanvas.addEventListener("pointermove", e => {
+  if(!tBezig) return;
+  const r = tCanvas.getBoundingClientRect();
+  const fx = (e.clientX-r.left)/r.width, fy = (e.clientY-r.top)/r.height;
+  if(tBezig.soort === "teken"){
+    const p = tBezig.stroke.pts, last = p[p.length-1];
+    const afstandPix = Math.hypot((fx-last[0])*r.width, (fy-last[1])*r.height);
+    if(afstandPix > 1.5){ p.push([fx,fy]); tekenTheorie(); }
+  }else{
+    theorieGum(fx, fy);
+  }
+});
+tCanvas.addEventListener("pointerup", () => {
+  if(tBezig && (tBezig.soort === "teken" || (tBezig.soort === "gum" && tBezig.gewist))) markDirty();
+  tBezig = null;
+});
+
+function theorieGum(fx, fy){
+  const r = tCanvas.getBoundingClientRect();
+  const drempel = 14 / Math.max(r.width, r.height);
+  const arr = theorieStrokes();
+  for(let i = arr.length-1; i >= 0; i--){
+    if(theorieRaakt(arr[i], fx, fy, drempel)){
+      if(!tBezig.gewist){ theorieSnapshot(); tBezig.gewist = true; }
+      arr.splice(i,1);
+      tekenTheorie();
+      return;
+    }
+  }
+}
+function theorieRaakt(s, x, y, d){
+  const p = s.pts;
+  if(p.length === 1) return Math.hypot(x-p[0][0], y-p[0][1]) < d;
+  for(let i=0; i<p.length-1; i++)
+    if(theorieAfstandSeg(x, y, p[i], p[i+1]) < d) return true;
+  return false;
+}
+function theorieAfstandSeg(x, y, a, b){
+  const dx = b[0]-a[0], dy = b[1]-a[1];
+  const l2 = dx*dx + dy*dy;
+  let t = l2 ? ((x-a[0])*dx + (y-a[1])*dy)/l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(x - (a[0]+t*dx), y - (a[1]+t*dy));
+}
+function theorieSnapshot(){
+  theorieUndoStack.push(JSON.stringify(theorieStrokes()));
+  if(theorieUndoStack.length > 40) theorieUndoStack.shift();
+}
+function theorieUndo(){
+  const s = theorieUndoStack.pop();
+  if(!s) return;
+  les.content.theorie_tekening = JSON.parse(s);
+  tekenTheorie(); markDirty();
+}
+function theorieWis(){
+  if(!theorieStrokes().length) return;
+  if(!confirm("Tekening in het theorieblok wissen?")) return;
+  theorieSnapshot();
+  les.content.theorie_tekening = [];
+  tekenTheorie(); markDirty();
+}
+function toggleTheorieTeken(){
+  theorieTekenen = !theorieTekenen;
+  document.getElementById("theorie-canvas-wrap").classList.toggle("tekenen", theorieTekenen);
+  document.getElementById("theorie-teken-toggle").classList.toggle("on", theorieTekenen);
+}
+function theorieGumToggle(){
+  theorieTool = theorieTool === "gum" ? "pen" : "gum";
+  document.getElementById("theorie-gum-toggle").classList.toggle("on", theorieTool === "gum");
+}
+document.querySelectorAll(".tkleur").forEach(b => b.onclick = () => {
+  theorieKleur = b.dataset.c;
+  document.querySelectorAll(".tkleur").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  theorieTool = "pen";
+  document.getElementById("theorie-gum-toggle").classList.remove("on");
+});
+
+/* ============ THEORIE-RESIZER (hoogte aanpasbaar naar beneden) ============ */
+(function(){
+  const rez = document.getElementById("theorie-resizer");
+  const wrap = document.getElementById("theorie-canvas-wrap");
+  let slepen = false, startY = 0, startH = 0;
+  rez.addEventListener("pointerdown", e => {
+    slepen = true; startY = e.clientY; startH = wrap.getBoundingClientRect().height;
+    rez.setPointerCapture(e.pointerId);
+  });
+  rez.addEventListener("pointermove", e => {
+    if(!slepen) return;
+    const min = 80, max = Math.round(window.innerHeight * 0.7);
+    const nieuw = Math.min(Math.max(startH + (e.clientY - startY), min), max);
+    wrap.style.height = nieuw + "px";
+  });
+  rez.addEventListener("pointerup", () => slepen = false);
+})();
 
 /* ============ OPGAVEN / SNIPPET ============ */
 function renderTabs(){
