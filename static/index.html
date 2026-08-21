@@ -91,6 +91,8 @@
   #theorie-toolbar{position:absolute;top:8px;right:12px;z-index:3;display:flex;gap:4px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 2px 8px rgba(20,30,50,.1)}
   #theorie-toolbar button{padding:5px 8px;font-size:13px;border-radius:6px;line-height:1}
   #theorie-toolbar button.on{background:var(--accent-soft);border-color:var(--accent)}
+  #theorie-toolbar-extra{display:none;gap:4px;align-items:center}
+  #theorie-canvas-wrap.tekenen #theorie-toolbar-extra{display:flex}
   .tkleur{width:20px;height:20px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
   .tkleur.on{box-shadow:0 0 0 2px var(--accent)}
   #theorie-resizer{height:9px;cursor:row-resize;background:transparent;flex:none;position:relative}
@@ -117,6 +119,9 @@
   #toolbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 8px;box-shadow:0 2px 10px rgba(20,30,50,.08)}
   #toolbar button{padding:8px 11px;border-radius:8px;font-size:15px;line-height:1}
   #toolbar button.on{background:var(--accent-soft);border-color:var(--accent)}
+  #toolbar-inner{display:flex;gap:6px;align-items:center}
+  #toolbar.dicht #toolbar-inner{display:none}
+  #toolbar-toggle{padding:8px 10px}
   .kleur{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
   .kleur.on{box-shadow:0 0 0 2px var(--accent)}
   .sep{width:1px;height:24px;background:var(--line);margin:0 3px}
@@ -267,12 +272,14 @@
       <canvas id="theorie-canvas"></canvas>
       <div id="theorie-toolbar">
         <button id="theorie-teken-toggle" onclick="toggleTheorieTeken()" title="Tekenen aan/uit">✏️</button>
-        <button class="tkleur on" data-c="#c62828" style="background:#c62828" title="Rood"></button>
-        <button class="tkleur" data-c="#1d4ed8" style="background:#1d4ed8" title="Blauw"></button>
-        <button class="tkleur" data-c="#1c2733" style="background:#1c2733" title="Zwart"></button>
-        <button id="theorie-gum-toggle" onclick="theorieGumToggle()" title="Gum">🧽</button>
-        <button onclick="theorieUndo()" title="Ongedaan maken">↩</button>
-        <button onclick="theorieWis()" title="Tekening wissen">🗑</button>
+        <span id="theorie-toolbar-extra">
+          <button class="tkleur on" data-c="#c62828" style="background:#c62828" title="Rood"></button>
+          <button class="tkleur" data-c="#1d4ed8" style="background:#1d4ed8" title="Blauw"></button>
+          <button class="tkleur" data-c="#1c2733" style="background:#1c2733" title="Zwart"></button>
+          <button id="theorie-gum-toggle" onclick="theorieGumToggle()" title="Gum">🧽</button>
+          <button onclick="theorieUndo()" title="Ongedaan maken">↩</button>
+          <button onclick="theorieWis()" title="Tekening wissen">🗑</button>
+        </span>
       </div>
     </div>
     <div id="theorie-resizer" title="Sleep om het theorieblok groter of kleiner te maken"></div>
@@ -287,19 +294,22 @@
     <div id="board-wrap">
       <canvas id="board"></canvas>
       <div id="toolbar">
-        <button id="tool-pen" class="on" title="Pen (P)" onclick="setTool('pen')">✏️</button>
-        <button id="tool-gum" title="Gum (G)" onclick="setTool('gum')">🧽</button>
-        <button id="tool-hand" title="Verschuiven (H, of rechtermuisknop slepen)" onclick="setTool('hand')">✋</button>
-        <span class="sep"></span>
-        <button class="kleur on" style="background:#1d4ed8" data-c="#1d4ed8" title="Blauw"></button>
-        <button class="kleur" style="background:#c62828" data-c="#c62828" title="Rood"></button>
-        <button class="kleur" style="background:#2e7d32" data-c="#2e7d32" title="Groen"></button>
-        <button class="kleur" style="background:#1c2733" data-c="#1c2733" title="Zwart"></button>
-        <span class="sep"></span>
-        <button id="dikte" title="Lijndikte wisselen" onclick="wisselDikte()">—</button>
-        <span class="sep"></span>
-        <button title="Ongedaan maken (Ctrl+Z)" onclick="undo()">↩</button>
-        <button title="Bord van deze opgave wissen" onclick="wisBord()">🗑</button>
+        <button id="toolbar-toggle" onclick="toggleBoardToolbar()" title="Werkbalk in-/uitklappen">◂</button>
+        <span id="toolbar-inner">
+          <button id="tool-pen" class="on" title="Pen (P)" onclick="setTool('pen')">✏️</button>
+          <button id="tool-gum" title="Gum (G)" onclick="setTool('gum')">🧽</button>
+          <button id="tool-hand" title="Verschuiven (H, of rechtermuisknop slepen)" onclick="setTool('hand')">✋</button>
+          <span class="sep"></span>
+          <button class="kleur on" style="background:#1d4ed8" data-c="#1d4ed8" title="Blauw"></button>
+          <button class="kleur" style="background:#c62828" data-c="#c62828" title="Rood"></button>
+          <button class="kleur" style="background:#2e7d32" data-c="#2e7d32" title="Groen"></button>
+          <button class="kleur" style="background:#1c2733" data-c="#1c2733" title="Zwart"></button>
+          <span class="sep"></span>
+          <button id="dikte" title="Lijndikte wisselen" onclick="wisselDikte()">—</button>
+          <span class="sep"></span>
+          <button title="Ongedaan maken (Ctrl+Z)" onclick="undo()">↩</button>
+          <button title="Bord van deze opgave wissen" onclick="wisBord()">🗑</button>
+        </span>
       </div>
       <div id="zoomctl">
         <button onclick="zoomStap(1.2)" title="Inzoomen">+</button>
@@ -1169,6 +1179,11 @@ function wisBord(){
   teken(); markDirty();
 }
 
+function toggleBoardToolbar(){
+  const el = document.getElementById("toolbar");
+  el.classList.toggle("dicht");
+  document.getElementById("toolbar-toggle").textContent = el.classList.contains("dicht") ? "▸" : "◂";
+}
 function setTool(t){
   tool = t;
   for(const id of ["pen","gum","hand"])
