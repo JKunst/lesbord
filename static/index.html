@@ -130,6 +130,18 @@
   #start-voet .lbl{color:#fff;font-size:14px}
   #start-voet input{width:74px}
   #start-voet button{padding:12px 22px;font-size:16px}
+  #slot-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #slot-scherm.open{display:flex}
+  #slot-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #slot-kop h2{margin:0;font-size:21px;font-weight:600}
+  #slot-kop .k{font-size:14px;opacity:.8}
+  #slot-panelen{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0}
+  #slotvragen,#slotantwoorden{height:100%;font-size:19px;line-height:1.5;outline:none}
+  #slotvragen:empty::before{content:"Typ hier de vragen, of plak een afbeelding (Ctrl+V)…";color:var(--muted);font-size:16px}
+  #slotantwoorden:empty::before{content:"Typ hier de antwoorden, of plak een afbeelding (Ctrl+V)…";color:var(--muted);font-size:16px}
+  #slotvragen img,#slotantwoorden img{max-width:100%;display:block;margin:10px 0;border:1px solid var(--line);border-radius:8px}
+  #slot-voet{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:16px}
+  #slot-voet button{padding:12px 22px;font-size:16px}
 
   /* ---------- GROEPJES ---------- */
   #groep-knop{position:absolute;right:14px;top:10px;font-size:17px;padding:8px 12px;border-radius:10px;box-shadow:0 2px 10px rgba(20,30,50,.08);z-index:6}
@@ -198,6 +210,7 @@
   <div id="topbar">
     <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
+    <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
     <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
     <span class="crumb" id="crumb"></span>
     <div id="doelen" contenteditable="true" spellcheck="false" title="Leerdoelen"></div>
@@ -323,6 +336,33 @@
   </div>
   <div id="start-voet">
     <button class="primary" onclick="startDeLes()">Start de les</button>
+  </div>
+</div>
+
+<!-- ================= SLOTSCHERM ================= -->
+<div id="slot-scherm">
+  <div id="slot-kop">
+    <h2>Einde van de les</h2>
+    <span class="k" id="slot-kop-info"></span>
+  </div>
+  <div id="slot-panelen">
+    <div class="start-paneel">
+      <h3>Vragen</h3>
+      <div class="start-body">
+        <div id="slotvragen" contenteditable="true" spellcheck="false"></div>
+      </div>
+      <div class="voet">Typ of plak (Ctrl+V). Wordt bij deze les opgeslagen.</div>
+    </div>
+    <div class="start-paneel">
+      <h3>Antwoorden</h3>
+      <div class="start-body">
+        <div id="slotantwoorden" contenteditable="true" spellcheck="false"></div>
+      </div>
+      <div class="voet">Typ of plak (Ctrl+V). Wordt bij deze les opgeslagen.</div>
+    </div>
+  </div>
+  <div id="slot-voet">
+    <button onclick="sluitSlot()">Sluiten</button>
   </div>
 </div>
 
@@ -557,6 +597,7 @@ async function openLes(id){
 
 function sluitLes(){
   document.getElementById("start-scherm").classList.remove("open");
+  document.getElementById("slot-scherm").classList.remove("open");
   flushSave();
   stopTimer();
   document.getElementById("les").classList.remove("open");
@@ -672,6 +713,18 @@ document.addEventListener("paste", async e => {
       les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
       markDirty();
     }
+    return;
+  }
+  // slotscherm open: vragen- of antwoordenvak
+  if(document.getElementById("slot-scherm").classList.contains("open")){
+    const veldId = act === document.getElementById("slotantwoorden") ? "slotantwoorden" : "slotvragen";
+    let url;
+    try{ url = await api.upload(blob); }
+    catch{ alert("Afbeelding uploaden mislukt."); return; }
+    document.getElementById(veldId).focus();
+    document.execCommand("insertHTML", false, `<img src="${url}">`);
+    les.content[veldId] = document.getElementById(veldId).innerHTML;
+    markDirty();
     return;
   }
   let url;
@@ -979,6 +1032,29 @@ document.getElementById("startopdracht").addEventListener("input", () => {
   les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
   markDirty();
 });
+
+function toonSlot(){
+  document.getElementById("slot-kop-info").textContent =
+    `${les.klas_naam} · ${les.titel}`;
+  document.getElementById("slotvragen").innerHTML = les.content.slotvragen || "";
+  document.getElementById("slotantwoorden").innerHTML = les.content.slotantwoorden || "";
+  document.getElementById("slot-scherm").classList.add("open");
+}
+
+function sluitSlot(){
+  les.content.slotvragen = document.getElementById("slotvragen").innerHTML;
+  les.content.slotantwoorden = document.getElementById("slotantwoorden").innerHTML;
+  markDirty();
+  document.getElementById("slot-scherm").classList.remove("open");
+  requestAnimationFrame(resizeBoard);
+}
+
+for(const _id of ["slotvragen","slotantwoorden"]){
+  document.getElementById(_id).addEventListener("input", () => {
+    les.content[_id] = document.getElementById(_id).innerHTML;
+    markDirty();
+  });
+}
 
 /* ============ GROEPJES ============ */
 let groepGrootte = 3;
