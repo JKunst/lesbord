@@ -47,11 +47,12 @@
   #les{display:none;height:100vh;flex-direction:column}
   #les.open{display:flex}
 
-  #topbar{position:relative;display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
-  #topbar .crumb{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;text-align:right;max-width:280px;overflow:hidden;text-overflow:ellipsis;flex:none}
+  #topbar{position:relative;display:flex;align-items:flex-start;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
+  #topbar-rechts{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;padding-top:4px}
+  #topbar .crumb{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis}
   #doelen{flex:1;min-width:0;font-size:17px;font-weight:600;padding:6px 10px;border-radius:8px}
   #doelen:empty::before{content:"Leerdoelen van deze les…";color:var(--muted);font-weight:400}
-  #savestate{font-size:12px;color:var(--muted);white-space:nowrap;min-width:86px;text-align:right}
+  #savestate{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
 
   /* huiswerk-balk in de topbar */
   #hw-balk{display:none;align-items:center;gap:8px;cursor:pointer;flex:none;padding:4px 6px;border-radius:8px}
@@ -243,8 +244,10 @@
       <div class="hw-bar" id="hw-bar-mini"></div>
       <span id="hw-pct"></span>
     </div>
-    <span id="savestate"></span>
-    <span class="crumb" id="crumb"></span>
+    <div id="topbar-rechts">
+      <span class="crumb" id="crumb"></span>
+      <span id="savestate"></span>
+    </div>
   </div>
   <div id="hw-paneel">
     <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -744,6 +747,7 @@ function tekenTheorieStroke(s, W, H){
 
 tCanvas.addEventListener("pointerdown", e => {
   if(!theorieTekenen) return;
+  resizeTheorieCanvas();  // zekerheidsmarge: canvas altijd actueel vóór een nieuwe streek
   tCanvas.setPointerCapture(e.pointerId);
   const r = tCanvas.getBoundingClientRect();
   const fx = (e.clientX-r.left)/r.width, fy = (e.clientY-r.top)/r.height;
@@ -822,6 +826,7 @@ function toggleTheorieTeken(){
   theorieTekenen = !theorieTekenen;
   document.getElementById("theorie-canvas-wrap").classList.toggle("tekenen", theorieTekenen);
   document.getElementById("theorie-teken-toggle").classList.toggle("on", theorieTekenen);
+  if(theorieTekenen) resizeTheorieCanvas();  // harde herkalibratie, niet wachten op de ResizeObserver
 }
 function theorieGumToggle(){
   theorieTool = theorieTool === "gum" ? "pen" : "gum";
@@ -849,8 +854,9 @@ document.querySelectorAll(".tkleur").forEach(b => b.onclick = () => {
     const min = 80, max = Math.round(window.innerHeight * 0.7);
     const nieuw = Math.min(Math.max(startH + (e.clientY - startY), min), max);
     wrap.style.height = nieuw + "px";
+    resizeTheorieCanvas();
   });
-  rez.addEventListener("pointerup", () => slepen = false);
+  rez.addEventListener("pointerup", () => { slepen = false; resizeTheorieCanvas(); });
 })();
 
 /* ============ OPGAVEN / SNIPPET ============ */
