@@ -95,15 +95,22 @@
   #theorie-canvas-wrap.tekenen #theorie-toolbar-extra{display:flex}
   .tkleur{width:20px;height:20px;border-radius:50%;padding:0;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
   .tkleur.on{box-shadow:0 0 0 2px var(--accent)}
-  #theorie-resizer{height:9px;cursor:row-resize;background:transparent;flex:none;position:relative}
+  #theorie-resizer{height:9px;cursor:row-resize;background:transparent;flex:none;position:relative;z-index:2;touch-action:none;user-select:none}
+  #theorie-resizer::before{content:"";position:absolute;left:0;right:0;top:-4px;bottom:-4px}
   #theorie-resizer::after{content:"";position:absolute;left:50%;top:50%;width:36px;height:3px;background:var(--line);border-radius:2px;transform:translate(-50%,-50%)}
-  #theorie-resizer:hover{background:var(--accent-soft)}
+  #theorie-resizer:hover,#theorie-resizer.slepen{background:var(--accent-soft)}
   #theorie-wrap.dicht #theorie-canvas-wrap,#theorie-wrap.dicht #theorie-resizer{display:none}
 
   #werk{flex:1;display:flex;min-height:0}
   #opgave-kolom{width:360px;min-width:220px;max-width:60vw;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line)}
-  #splitter{width:7px;flex:none;cursor:col-resize;background:transparent}
-  #splitter:hover{background:var(--accent-soft)}
+  #splitter{width:7px;flex:none;cursor:col-resize;background:transparent;position:relative;z-index:2;touch-action:none;user-select:none}
+  #splitter::before{content:"";position:absolute;top:0;bottom:0;left:-4px;right:-4px}
+  #splitter:hover,#splitter.slepen{background:var(--accent-soft)}
+  /* tijdens het slepen: geen tekstselectie of hover-effecten die de muis "volgen" */
+  body.sleept{user-select:none;-webkit-user-select:none}
+  body.sleept *{cursor:inherit!important}
+  body.sleept.rij{cursor:row-resize}
+  body.sleept.kolom{cursor:col-resize}
 
   #opgave-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-bottom:1px solid var(--line)}
   .otab{padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:14px}
@@ -848,23 +855,61 @@ document.querySelectorAll(".tkleur").forEach(b => b.onclick = () => {
   document.getElementById("theorie-gum-toggle").classList.remove("on");
 });
 
+/* ============ SLEEPBARE SCHEIDINGEN ============ */
+// Eén helper voor beide handvatten (theorie-hoogte en kolom-breedte).
+// Belangrijk voor soepel slepen: pointer capture, verplaatsing t.o.v. het
+// startpunt (dus geen sprong bij het pakken), en hooguit één stijlwijziging
+// per frame. De ResizeObserver op de canvassen doet de rest.
+function maakSleepbaar(greep, richting, h){
+  let bezig = false, startVal = 0, startPos = 0, laatste = 0, frame = 0;
+  const pos = e => richting === "rij" ? e.clientY : e.clientX;
+
+  greep.addEventListener("pointerdown", e => {
+    if(e.button !== 0 && e.pointerType === "mouse") return;
+    e.preventDefault();                       // geen tekstselectie tijdens slepen
+    bezig = true;
+    startVal = h.start();
+    startPos = laatste = pos(e);
+    greep.setPointerCapture(e.pointerId);
+    greep.classList.add("slepen");
+    document.body.classList.add("sleept", richting);
+  });
+
+  greep.addEventListener("pointermove", e => {
+    if(!bezig) return;
+    laatste = pos(e);
+    if(frame) return;                         // al een update ingepland
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      if(bezig) h.stap(startVal, laatste - startPos);
+    });
+  });
+
+  const stop = () => {
+    if(!bezig) return;
+    bezig = false;
+    if(frame){ cancelAnimationFrame(frame); frame = 0; }
+    h.stap(startVal, laatste - startPos);     // laatste stand zeker meenemen
+    greep.classList.remove("slepen");
+    document.body.classList.remove("sleept", richting);
+    h.klaar();
+  };
+  for(const ev of ["pointerup","pointercancel","lostpointercapture"]) greep.addEventListener(ev, stop);
+}
+
 /* ============ THEORIE-RESIZER (hoogte aanpasbaar naar beneden) ============ */
 (function(){
   const rez = document.getElementById("theorie-resizer");
   const wrap = document.getElementById("theorie-canvas-wrap");
-  let slepen = false, startY = 0, startH = 0;
-  rez.addEventListener("pointerdown", e => {
-    slepen = true; startY = e.clientY; startH = wrap.getBoundingClientRect().height;
-    rez.setPointerCapture(e.pointerId);
+  maakSleepbaar(rez, "rij", {
+    start(){ return wrap.getBoundingClientRect().height; },
+    // e.clientY - startY is de verplaatsing; de greep blijft zo exact onder de muis
+    stap(startH, dy){
+      const min = 80, max = Math.round(window.innerHeight * 0.7);
+      wrap.style.height = Math.min(Math.max(startH + dy, min), max) + "px";
+    },
+    klaar(){ resizeTheorieCanvas(); }
   });
-  rez.addEventListener("pointermove", e => {
-    if(!slepen) return;
-    const min = 80, max = Math.round(window.innerHeight * 0.7);
-    const nieuw = Math.min(Math.max(startH + (e.clientY - startY), min), max);
-    wrap.style.height = nieuw + "px";
-    resizeTheorieCanvas();
-  });
-  rez.addEventListener("pointerup", () => { slepen = false; resizeTheorieCanvas(); });
 })();
 
 /* ============ OPGAVEN / SNIPPET ============ */
@@ -979,14 +1024,14 @@ document.addEventListener("paste", async e => {
 /* ============ SPLITTER ============ */
 (function(){
   const sp = document.getElementById("splitter"), kol = document.getElementById("opgave-kolom");
-  let slepen = false;
-  sp.addEventListener("pointerdown", e => { slepen = true; sp.setPointerCapture(e.pointerId); });
-  sp.addEventListener("pointermove", e => {
-    if(!slepen) return;
-    kol.style.width = Math.max(220, e.clientX) + "px";
-    resizeBoard();
+  maakSleepbaar(sp, "kolom", {
+    start(){ return kol.getBoundingClientRect().width; },
+    stap(startW, dx){
+      const min = 220, max = Math.round(window.innerWidth * 0.6);
+      kol.style.width = Math.min(Math.max(startW + dx, min), max) + "px";
+    },
+    klaar(){ resizeBoard(); }
   });
-  sp.addEventListener("pointerup", () => slepen = false);
 })();
 
 /* ============ BORD (canvas) ============ */
@@ -1302,6 +1347,7 @@ for(const _id of ["slotvragen","slotantwoorden"]){
 
 /* ============ GROEPJES ============ */
 let groepGrootte = 3;
+const MAX_GROEPEN = 9;                    // cap op het aantal groepjes; geldt niet voor tweetallen
 let huiswerkStats = null;
 async function laadHuiswerk(){
   huiswerkStats = null;
@@ -1393,9 +1439,13 @@ function maakGroepjes(){
     [namen[i], namen[j]] = [namen[j], namen[i]];
   }
   // aantal groepen ≈ n/grootte; iedereen ingedeeld, niemand alleen,
-  // groottes verschillen onderling hooguit 1
+  // groottes verschillen onderling hooguit 1.
+  // Vanaf grootte 3 geldt de cap van MAX_GROEPEN en groeien de groepjes vanzelf
+  // mee: 30 leerlingen à 3 wordt 9 groepjes, dus 3× vier en 6× drie.
+  // Tweetallen blijven tweetallen — daar mag het aantal groepjes oplopen.
   const n = namen.length;
-  let aantal = Math.max(1, Math.round(n / groepGrootte));
+  const cap = groepGrootte <= 2 ? Infinity : MAX_GROEPEN;
+  let aantal = Math.min(cap, Math.max(1, Math.round(n / groepGrootte)));
   while(aantal > 1 && Math.floor(n / aantal) < 2) aantal--;
   const basis = Math.floor(n / aantal), rest = n % aantal;
   const groepen = [];
