@@ -83,6 +83,7 @@
   #theorie-head{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
   #theorie-canvas-wrap{position:relative;height:32vh;min-height:80px;max-height:70vh;flex:none}
   #theorie{position:absolute;inset:0;padding:4px 18px 12px;overflow:auto;font-size:16px}
+  #theorie.ruitjes{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:32px 32px;background-attachment:local}   /* local: de ruitjes scrollen mee met de tekst */
   #theorie img{max-width:min(680px,100%);display:block;margin:8px 0;border:1px solid var(--line);border-radius:6px}
   #theorie:empty::before{content:"Typ hier theorie, of plak een afbeelding (Ctrl+V)…";color:var(--muted)}
   #theorie-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;touch-action:none}
@@ -278,6 +279,7 @@
       <div id="theorie" contenteditable="true" spellcheck="false"></div>
       <canvas id="theorie-canvas"></canvas>
       <div id="theorie-toolbar">
+        <button id="theorie-ruit-toggle" onclick="toggleTheorieRuit()" title="Ruitjesachtergrond aan/uit">▦</button>
         <button id="theorie-teken-toggle" onclick="toggleTheorieTeken()" title="Tekenen aan/uit">✏️</button>
         <span id="theorie-toolbar-extra">
           <button class="tkleur on" data-c="#c62828" style="background:#c62828" title="Rood"></button>
@@ -655,6 +657,7 @@ async function openLes(id){
   theorieTekenen = false;
   document.getElementById("theorie-canvas-wrap").classList.remove("tekenen");
   document.getElementById("theorie-teken-toggle").classList.remove("on");
+  zetTheorieRuit();
   requestAnimationFrame(resizeBoard);
   requestAnimationFrame(resizeTheorieCanvas);
   zetSaveState("");
@@ -710,6 +713,21 @@ document.getElementById("hw-tekst").addEventListener("input", () => {
     catch{ /* stil falen — het is een losse weeknotitie, geen les-content */ }
   }, 900);
 });
+
+/* ============ THEORIE-RUITJES ============ */
+// Puur decoratief en per les opgeslagen; de achtergrond staat op #theorie zelf,
+// dus onder de tekst en onder het tekencanvas.
+function zetTheorieRuit(){
+  const aan = !!(les && les.content.theorie_ruitjes);
+  document.getElementById("theorie").classList.toggle("ruitjes", aan);
+  document.getElementById("theorie-ruit-toggle").classList.toggle("on", aan);
+}
+function toggleTheorieRuit(){
+  if(!les) return;
+  les.content.theorie_ruitjes = !les.content.theorie_ruitjes;
+  zetTheorieRuit();
+  markDirty();
+}
 
 /* ============ THEORIE-TEKENING (canvas over het theorieblok) ============ */
 const tCanvas = document.getElementById("theorie-canvas");
