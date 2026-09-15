@@ -82,6 +82,10 @@ def init_db() -> None:
     if "hw_tekst" not in cols:
         con.execute("ALTER TABLE klassen ADD COLUMN hw_tekst TEXT NOT NULL DEFAULT ''")
         con.commit()
+    # studiewijzer: URL van één geüploade afbeelding, per klas (zelfde in elke les)
+    if "studiewijzer" not in cols:
+        con.execute("ALTER TABLE klassen ADD COLUMN studiewijzer TEXT NOT NULL DEFAULT ''")
+        con.commit()
     con.close()
 
 
@@ -233,6 +237,19 @@ class HwTekstIn(BaseModel):
 def zet_hwtekst(klas_id: int, body: HwTekstIn):
     con = db()
     con.execute("UPDATE klassen SET hw_tekst=? WHERE id=?", (body.tekst, klas_id))
+    con.commit()
+    con.close()
+    return {"ok": True}
+
+
+class StudiewijzerIn(BaseModel):
+    url: str  # relatieve upload-URL, of leeg om te verwijderen
+
+
+@app.put("/api/klassen/{klas_id}/studiewijzer")
+def zet_studiewijzer(klas_id: int, body: StudiewijzerIn):
+    con = db()
+    con.execute("UPDATE klassen SET studiewijzer=? WHERE id=?", (body.url.strip(), klas_id))
     con.commit()
     con.close()
     return {"ok": True}
@@ -399,7 +416,7 @@ def create_les(klas_id: int, body: LesIn):
 def get_les(les_id: int):
     con = db()
     row = con.execute(
-        "SELECT l.*, k.naam AS klas_naam, k.leerlingen AS leerlingen, k.hw_tekst AS hw_tekst FROM lessen l JOIN klassen k ON k.id=l.klas_id WHERE l.id=?",
+        "SELECT l.*, k.naam AS klas_naam, k.leerlingen AS leerlingen, k.hw_tekst AS hw_tekst, k.studiewijzer AS studiewijzer FROM lessen l JOIN klassen k ON k.id=l.klas_id WHERE l.id=?",
         (les_id,),
     ).fetchone()
     con.close()

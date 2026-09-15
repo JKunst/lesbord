@@ -75,6 +75,10 @@
   .hw-legenda span{display:inline-flex;align-items:center;gap:5px}
   .hw-legenda i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
+  /* Huiswerk + Studiewijzer onder elkaar in de topbar */
+  #hw-knoppen{display:flex;flex-direction:column;gap:4px;flex:none}
+  #hw-knoppen button{padding:5px 12px;font-size:13px;text-align:left}
+
   /* Hw-blokje: huiswerk voor deze week (vrije tekst, per klas) */
   #hw-tekst-blok{display:flex;align-items:center;flex:none}
   #hw-tekst{width:20ch;font-size:13px;line-height:1.35;padding:6px 8px;resize:vertical;min-height:52px;max-height:120px}
@@ -172,6 +176,20 @@
   #slotvragen img,#slotantwoorden img{max-width:100%;display:block;margin:10px 0;border:1px solid var(--line);border-radius:8px}
   #slot-voet{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:12px;margin-top:16px}
   #slot-voet button{padding:12px 22px;font-size:16px}
+  /* ---------- STUDIEWIJZER (één afbeelding per klas) ---------- */
+  #sw-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #sw-scherm.open{display:flex}
+  #sw-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #sw-kop h2{margin:0;font-size:21px;font-weight:600}
+  #sw-kop .k{font-size:14px;opacity:.8}
+  #sw-paneel{flex:1;min-height:0;display:flex}
+  #sw-paneel .start-paneel{flex:1}
+  #sw-zone{height:100%;display:flex;align-items:center;justify-content:center;border-radius:10px;outline:none}
+  #sw-zone img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+  #sw-zone .leeg{border:2px dashed var(--line);border-radius:10px;padding:34px 20px;text-align:center;color:var(--muted);font-size:14px;width:100%}
+  #sw-zone:focus .leeg{border-color:var(--accent)}
+  #sw-voet{flex:none;display:flex;align-items:center;gap:12px;margin-top:16px}
+  #sw-voet button{padding:12px 22px;font-size:16px}
   .antw-paneel{position:relative}
   .antw-sluier{position:absolute;inset:0;background:var(--panel);border-radius:10px;
     display:flex;align-items:center;justify-content:center;z-index:2}
@@ -246,7 +264,10 @@
     <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
     <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
-    <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
+    <div id="hw-knoppen">
+      <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
+      <button onclick="toonStudiewijzer()" title="Studiewijzer van deze klas tonen">📅 Studiewijzer</button>
+    </div>
     <div id="hw-tekst-blok" title="Huiswerk voor deze week — geldt voor de hele klas">
       <textarea id="hw-tekst" rows="3" placeholder="Huiswerk deze week…"></textarea>
     </div>
@@ -425,6 +446,30 @@
   </div>
   <div id="slot-voet">
     <button onclick="sluitSlot()">Sluiten</button>
+  </div>
+</div>
+
+<!-- ================= STUDIEWIJZER ================= -->
+<div id="sw-scherm">
+  <div id="sw-kop">
+    <h2>Studiewijzer</h2>
+    <span class="k" id="sw-kop-info"></span>
+  </div>
+  <div id="sw-paneel">
+    <div class="start-paneel">
+      <div class="start-body">
+        <div id="sw-zone" tabindex="0"></div>
+      </div>
+      <div class="voet">
+        <input type="file" id="sw-file" accept="image/*" style="display:none">
+        <button class="icon-btn" onclick="document.getElementById('sw-file').click()">Afbeelding kiezen</button>
+        <button class="icon-btn" id="sw-wis" onclick="wisStudiewijzer()">Verwijderen</button>
+        <span style="margin-left:6px">of klik in het vak en plak (Ctrl+V). Geldt voor alle lessen van deze klas.</span>
+      </div>
+    </div>
+  </div>
+  <div id="sw-voet">
+    <button onclick="sluitStudiewijzer()">Sluiten</button>
   </div>
 </div>
 
@@ -667,6 +712,7 @@ async function openLes(id){
 function sluitLes(){
   document.getElementById("start-scherm").classList.remove("open");
   document.getElementById("slot-scherm").classList.remove("open");
+  document.getElementById("sw-scherm").classList.remove("open");
   flushSave();
   stopTimer();
   document.getElementById("les").classList.remove("open");
@@ -1010,6 +1056,11 @@ document.addEventListener("paste", async e => {
       les.content.startopdracht = document.getElementById("startopdracht").innerHTML;
       markDirty();
     }
+    return;
+  }
+  // studiewijzer open: altijd de studiewijzer-afbeelding vervangen
+  if(document.getElementById("sw-scherm").classList.contains("open")){
+    zetStudiewijzer(blob);
     return;
   }
   // slotscherm open: vragen- of antwoordenvak
@@ -1361,6 +1412,58 @@ for(const _id of ["slotvragen","slotantwoorden"]){
     les.content[_id] = document.getElementById(_id).innerHTML;
     markDirty();
   });
+}
+
+/* ============ STUDIEWIJZER (één afbeelding per klas) ============ */
+// Zit op de klas (les.studiewijzer komt mee uit GET lessen/{id}), dus dezelfde
+// afbeelding in elke les van die klas. Opslag: alleen de upload-URL.
+function renderStudiewijzer(){
+  const z = document.getElementById("sw-zone");
+  z.innerHTML = "";
+  if(les.studiewijzer){
+    const img = document.createElement("img");
+    img.src = les.studiewijzer;
+    z.appendChild(img);
+  }else{
+    z.innerHTML = `<div class="leeg">Nog geen studiewijzer voor ${les.klas_naam}.<br>Kies hieronder een afbeelding,<br>of klik hier en plak (Ctrl+V).</div>`;
+  }
+  document.getElementById("sw-wis").style.display = les.studiewijzer ? "" : "none";
+}
+
+async function zetStudiewijzer(blob){
+  let url;
+  try{ url = await api.upload(blob); }
+  catch{ alert("Afbeelding uploaden mislukt."); return; }
+  les.studiewijzer = url;
+  try{ await api.send("PUT", `klassen/${les.klas_id}/studiewijzer`, {url}); }
+  catch{ alert("Studiewijzer opslaan mislukt."); }
+  renderStudiewijzer();
+}
+
+async function wisStudiewijzer(){
+  if(!confirm("Studiewijzer verwijderen voor deze klas?")) return;
+  les.studiewijzer = "";
+  try{ await api.send("PUT", `klassen/${les.klas_id}/studiewijzer`, {url: ""}); }
+  catch{ alert("Studiewijzer opslaan mislukt."); }
+  renderStudiewijzer();
+}
+
+document.getElementById("sw-file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if(f) zetStudiewijzer(f);
+  e.target.value = "";
+});
+
+function toonStudiewijzer(){
+  document.getElementById("sw-kop-info").textContent = les.klas_naam;
+  renderStudiewijzer();
+  document.getElementById("sw-scherm").classList.add("open");
+  document.getElementById("sw-zone").focus();
+}
+
+function sluitStudiewijzer(){
+  document.getElementById("sw-scherm").classList.remove("open");
+  requestAnimationFrame(resizeBoard);
 }
 
 /* ============ GROEPJES ============ */
