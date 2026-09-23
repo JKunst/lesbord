@@ -776,7 +776,14 @@ function toggleTheorieRuit(){
 }
 
 /* ============ THEORIE-TEKENING (canvas over het theorieblok) ============ */
+// Het canvas ligt vast over het zichtbare deel van het blok; de streken zijn
+// opgeslagen in "inhoudscoördinaten" (x als fractie van de breedte, y in px
+// vanaf de bovenkant van de inhoud) en worden bij het tekenen verschoven met
+// de scrollpositie van #theorie, zodat ze met de tekst meescrollen.
+// Oude streken (zonder v:2) hadden y als fractie van de hoogte; die worden
+// bij de eerste keer tekenen omgerekend.
 const tCanvas = document.getElementById("theorie-canvas");
+const tScroller = document.getElementById("theorie");
 const tCtx = tCanvas.getContext("2d");
 let theorieTekenen = false, theorieKleur = "#c62828", theorieTool = "pen";
 let theorieUndoStack = [];
@@ -801,38 +808,51 @@ function tekenTheorie(){
   const W = tCanvas.clientWidth, H = tCanvas.clientHeight;
   tCtx.clearRect(0,0,W,H);
   tCtx.lineCap = "round"; tCtx.lineJoin = "round";
-  for(const s of theorieStrokes()) tekenTheorieStroke(s, W, H);
+  tCtx.save();
+  tCtx.translate(0, -tScroller.scrollTop);
+  for(const s of theorieStrokes()){
+    if(s.v !== 2){ s.pts = s.pts.map(([x,y]) => [x, y*H]); s.v = 2; }
+    tekenTheorieStroke(s, W);
+  }
+  tCtx.restore();
 }
-function tekenTheorieStroke(s, W, H){
+function tekenTheorieStroke(s, W){
   const p = s.pts;
   if(p.length < 2){
     tCtx.fillStyle = s.c;
     tCtx.beginPath();
-    tCtx.arc(p[0][0]*W, p[0][1]*H, s.w/2, 0, 7);
+    tCtx.arc(p[0][0]*W, p[0][1], s.w/2, 0, 7);
     tCtx.fill();
     return;
   }
   tCtx.strokeStyle = s.c; tCtx.lineWidth = s.w;
   tCtx.beginPath();
-  tCtx.moveTo(p[0][0]*W, p[0][1]*H);
+  tCtx.moveTo(p[0][0]*W, p[0][1]);
   for(let i=1; i<p.length-1; i++){
     const mx = (p[i][0]+p[i+1][0])/2, my = (p[i][1]+p[i+1][1])/2;
-    tCtx.quadraticCurveTo(p[i][0]*W, p[i][1]*H, mx*W, my*H);
+    tCtx.quadraticCurveTo(p[i][0]*W, p[i][1], mx*W, my);
   }
   const l = p[p.length-1];
-  tCtx.lineTo(l[0]*W, l[1]*H);
+  tCtx.lineTo(l[0]*W, l[1]);
   tCtx.stroke();
 }
+// Pointerpositie -> inhoudscoördinaten [x-fractie, y-px incl. scroll]
+function theoriePunt(e){
+  const r = tCanvas.getBoundingClientRect();
+  return [(e.clientX-r.left)/r.width, e.clientY-r.top + tScroller.scrollTop];
+}
+tScroller.addEventListener("scroll", tekenTheorie);
+// In tekenmodus vangt het canvas het muiswiel; geef het door aan het tekstblok.
+tCanvas.addEventListener("wheel", e => { tScroller.scrollTop += e.deltaY; e.preventDefault(); }, {passive:false});
 
 tCanvas.addEventListener("pointerdown", e => {
   if(!theorieTekenen) return;
   resizeTheorieCanvas();  // zekerheidsmarge: canvas altijd actueel vóór een nieuwe streek
   tCanvas.setPointerCapture(e.pointerId);
-  const r = tCanvas.getBoundingClientRect();
-  const fx = (e.clientX-r.left)/r.width, fy = (e.clientY-r.top)/r.height;
+  const [fx, fy] = theoriePunt(e);
   if(theorieTool === "pen"){
     theorieSnapshot();
-    tBezig = {soort:"teken", stroke:{c:theorieKleur, w:3, pts:[[fx,fy]]}};
+    tBezig = {soort:"teken", stroke:{v:2, c:theorieKleur, w:3, pts:[[fx,fy]]}};
     theorieStrokes().push(tBezig.stroke);
     tekenTheorie();
   }else{
@@ -842,11 +862,10 @@ tCanvas.addEventListener("pointerdown", e => {
 });
 tCanvas.addEventListener("pointermove", e => {
   if(!tBezig) return;
-  const r = tCanvas.getBoundingClientRect();
-  const fx = (e.clientX-r.left)/r.width, fy = (e.clientY-r.top)/r.height;
+  const [fx, fy] = theoriePunt(e);
   if(tBezig.soort === "teken"){
     const p = tBezig.stroke.pts, last = p[p.length-1];
-    const afstandPix = Math.hypot((fx-last[0])*r.width, (fy-last[1])*r.height);
+    const afstandPix = Math.hypot((fx-last[0])*tCanvas.clientWidth, fy-last[1]);
     if(afstandPix > 1.5){ p.push([fx,fy]); tekenTheorie(); }
   }else{
     theorieGum(fx, fy);
@@ -858,11 +877,10 @@ tCanvas.addEventListener("pointerup", () => {
 });
 
 function theorieGum(fx, fy){
-  const r = tCanvas.getBoundingClientRect();
-  const drempel = 14 / Math.max(r.width, r.height);
+  const W = tCanvas.clientWidth;
   const arr = theorieStrokes();
   for(let i = arr.length-1; i >= 0; i--){
-    if(theorieRaakt(arr[i], fx, fy, drempel)){
+    if(theorieRaakt(arr[i], fx*W, fy, 14, W)){
       if(!tBezig.gewist){ theorieSnapshot(); tBezig.gewist = true; }
       arr.splice(i,1);
       tekenTheorie();
@@ -870,8 +888,9 @@ function theorieGum(fx, fy){
     }
   }
 }
-function theorieRaakt(s, x, y, d){
-  const p = s.pts;
+// Afstanden in px: x en y zijn al px, de streekpunten hebben x als fractie van W.
+function theorieRaakt(s, x, y, d, W){
+  const p = s.pts.map(([px,py]) => [px*W, py]);
   if(p.length === 1) return Math.hypot(x-p[0][0], y-p[0][1]) < d;
   for(let i=0; i<p.length-1; i++)
     if(theorieAfstandSeg(x, y, p[i], p[i+1]) < d) return true;
