@@ -535,7 +535,12 @@ app.mount("/huiswerk", WSGIMiddleware(huiswerk_wsgi_app))
 
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    # no-cache: de browser (smartboard) moet na een update altijd de nieuwe
+    # index.html ophalen i.p.v. een oude versie uit de cache te gebruiken.
+    return FileResponse(
+        os.path.join(STATIC_DIR, "index.html"),
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 if __name__ == "__main__":
