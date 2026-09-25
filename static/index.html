@@ -144,13 +144,13 @@
   #zoomlbl{align-self:center;font-size:12px;color:var(--muted);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
 
   /* ---------- STARTSCHERM ---------- */
-  #start-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #start-scherm{position:fixed;inset:0;background:var(--klas,#dde3ea);z-index:40;display:none;padding:22px;flex-direction:column}
   #start-scherm.open{display:flex}
-  #start-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #start-kop{display:flex;align-items:center;gap:14px;color:var(--ink);margin-bottom:14px;flex:none}
   #start-kop h2{margin:0;font-size:21px;font-weight:600}
-  #start-kop .k{font-size:14px;opacity:.8}
+  #start-kop .k{font-size:14px;color:var(--muted)}
   #start-panelen{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0}
-  .start-paneel{background:var(--panel);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;min-height:0;box-shadow:0 6px 24px rgba(20,30,50,.2)}
+  .start-paneel{background:var(--panel);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;min-height:0;box-shadow:0 4px 16px rgba(20,30,50,.1)}
   .start-paneel h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);flex:none}
   .start-body{flex:1;overflow:auto;min-height:0}
   #afspraken-zone{height:100%;display:flex;align-items:center;justify-content:center;border-radius:10px;outline:none}
@@ -162,7 +162,7 @@
   #startopdracht img{max-width:100%;display:block;margin:10px 0;border:1px solid var(--line);border-radius:8px}
   .start-paneel .voet{flex:none;padding-top:10px;font-size:13px;color:var(--muted)}
   #start-voet{flex:none;display:flex;align-items:center;justify-content:flex-start;gap:12px;margin-top:16px}
-  #start-voet .lbl{color:#fff;font-size:14px}
+  #start-voet .lbl{color:var(--ink);font-size:14px}
   #start-voet input{width:74px}
   #start-voet button{padding:12px 22px;font-size:16px}
   #slot-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
@@ -698,7 +698,8 @@ async function openLes(id){
   document.getElementById("home").style.display = "none";
   document.getElementById("les").classList.add("open");
   document.getElementById("crumb").textContent = `${les.klas_naam} · ${nlDatum(les.datum)} · ${les.titel}`;
-  document.getElementById("topbar").style.setProperty("--klas", klasKleur(les.klas_id));
+  // op body, zodat zowel de bovenbalk als het startscherm de klaskleur krijgen
+  document.body.style.setProperty("--klas", klasKleur(les.klas_id));
   document.getElementById("doelen").innerHTML = c.doelen;
   document.getElementById("theorie").innerHTML = c.theorie;
   document.getElementById("hw-tekst").value = les.hw_tekst || "";
