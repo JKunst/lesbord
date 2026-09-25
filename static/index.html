@@ -32,6 +32,7 @@
   .klas-card:hover{border-color:var(--accent)}
   .klas-card.active{border-color:var(--accent);background:var(--accent-soft)}
   .klas-card .n{font-weight:600}
+  .klas-card{border-left:6px solid var(--klas,var(--line))}
   .badge{font-size:12px;color:var(--muted)}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
   .les-row{display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid var(--line)}
@@ -47,7 +48,7 @@
   #les{display:none;height:100vh;flex-direction:column}
   #les.open{display:flex}
 
-  #topbar{position:relative;display:flex;align-items:flex-start;gap:14px;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
+  #topbar{position:relative;display:flex;align-items:flex-start;gap:14px;background:var(--klas,var(--panel));border-bottom:1px solid var(--line);padding:8px 14px;flex:none}
   #topbar-rechts{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;padding-top:4px}
   #topbar .crumb{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis}
   #doelen{flex:1;min-width:0;font-size:17px;font-weight:600;padding:6px 10px;border-radius:8px}
@@ -56,7 +57,7 @@
 
   /* huiswerk-balk in de topbar */
   #hw-balk{display:none;align-items:center;gap:8px;cursor:pointer;flex:none;padding:4px 6px;border-radius:8px}
-  #hw-balk:hover{background:var(--paper)}
+  #hw-balk:hover{background:rgba(255,255,255,.55)}
   #hw-balk.leeg{cursor:default}
   #hw-balk.leeg:hover{background:none}
   #hw-pct{font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -527,6 +528,11 @@ const api = {
 
 /* ============ HOME ============ */
 let klassen = [], huidigeKlas = null, kopieLesId = null;
+
+// Vaste kleur per klas (op id): [zacht voor de balk bovenin een les, rand voor het klaskaartje].
+const KLAS_KLEUREN = [["#dbe8fb","#7fa6e6"],["#dcf1e2","#74c08c"],["#fde7d3","#f0a868"],["#efe0f7","#b98ad6"],
+                      ["#fbf3c9","#e0c64a"],["#d6f0f0","#5fbcbc"],["#fadde4","#e58aa0"],["#e6ebd2","#a3b36a"]];
+function klasKleur(id, i=0){ return KLAS_KLEUREN[(id - 1 + KLAS_KLEUREN.length) % KLAS_KLEUREN.length][i]; }
 const dlgLes = document.getElementById("dlg-les");
 const dlgKopie = document.getElementById("dlg-kopie");
 
@@ -539,6 +545,7 @@ async function laadKlassen(){
     c.className = "klas-card" + (huidigeKlas && huidigeKlas.id===k.id ? " active" : "");
     c.innerHTML = `<span class="n"></span><span class="badge">${k.aantal} les${k.aantal===1?"":"sen"}</span>`;
     c.querySelector(".n").textContent = k.naam;
+    c.style.setProperty("--klas", klasKleur(k.id, 1));
     c.onclick = () => kiesKlas(k);
     el.appendChild(c);
   }
@@ -691,6 +698,7 @@ async function openLes(id){
   document.getElementById("home").style.display = "none";
   document.getElementById("les").classList.add("open");
   document.getElementById("crumb").textContent = `${les.klas_naam} · ${nlDatum(les.datum)} · ${les.titel}`;
+  document.getElementById("topbar").style.setProperty("--klas", klasKleur(les.klas_id));
   document.getElementById("doelen").innerHTML = c.doelen;
   document.getElementById("theorie").innerHTML = c.theorie;
   document.getElementById("hw-tekst").value = les.hw_tekst || "";
