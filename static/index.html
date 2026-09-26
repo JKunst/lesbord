@@ -144,9 +144,9 @@
   #zoomlbl{align-self:center;font-size:12px;color:var(--muted);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
 
   /* ---------- STARTSCHERM ---------- */
-  #start-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #start-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);background:color-mix(in srgb, var(--klas-rand,#142032) 55%, rgba(20,30,50,.35));z-index:40;display:none;padding:22px;flex-direction:column}
   #start-scherm.open{display:flex}
-  #start-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #start-kop{display:flex;align-items:center;gap:14px;color:#fff;text-shadow:0 1px 3px rgba(20,30,50,.45);margin-bottom:14px;flex:none}
   #start-kop h2{margin:0;font-size:21px;font-weight:600}
   #start-kop .k{font-size:14px;opacity:.8}
   #start-panelen{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0}
@@ -698,7 +698,9 @@ async function openLes(id){
   document.getElementById("home").style.display = "none";
   document.getElementById("les").classList.add("open");
   document.getElementById("crumb").textContent = `${les.klas_naam} · ${nlDatum(les.datum)} · ${les.titel}`;
-  document.getElementById("topbar").style.setProperty("--klas", klasKleur(les.klas_id));
+  // op body, zodat zowel de bovenbalk als het startscherm de klaskleur krijgen
+  document.body.style.setProperty("--klas", klasKleur(les.klas_id));
+  document.body.style.setProperty("--klas-rand", klasKleur(les.klas_id, 1));
   document.getElementById("doelen").innerHTML = c.doelen;
   document.getElementById("theorie").innerHTML = c.theorie;
   document.getElementById("hw-tekst").value = les.hw_tekst || "";
