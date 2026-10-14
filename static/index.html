@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesbord</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root{
     --ink:#1c2733; --muted:#66717f; --paper:#f4f6f3; --panel:#ffffff;
@@ -232,6 +235,71 @@
   #timer-menu .presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
   #timer-menu .presets button{padding:6px 10px;font-size:13px}
 
+  /* ---------- QUIZ (meerkeuze) ---------- */
+  #quiz-scherm{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:40;display:none;padding:22px;flex-direction:column}
+  #quiz-scherm.open{display:flex}
+  #quiz-kop{display:flex;align-items:center;gap:14px;color:#fff;margin-bottom:14px;flex:none}
+  #quiz-kop h2{margin:0;font-size:21px;font-weight:600}
+  #quiz-kop .k{font-size:14px;opacity:.8}
+  #quiz-modus{margin-left:auto}
+  #quiz-body{flex:1;min-height:0;display:flex}
+  #quiz-body > .start-paneel{flex:1}
+  #quiz-scherm.bewerk #quiz-present,#quiz-scherm.bewerk .alleen-present{display:none}
+  #quiz-scherm:not(.bewerk) #quiz-edit{display:none}
+  #quiz-voet{flex:none;display:flex;align-items:center;gap:12px;margin-top:16px}
+  #quiz-voet button{padding:12px 22px;font-size:16px}
+  #quiz-voet .alleen-present{margin-left:auto;display:flex;align-items:center;gap:12px}
+  #quiz-voet button:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+  #quiz-teller{color:#fff;font-size:15px;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+
+  #quiz-label{flex:none;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;min-height:1em}
+  #quiz-vraag{flex:none;max-height:45%;overflow:auto;font-size:clamp(19px,2.3vw,30px);line-height:1.45;font-weight:600;white-space:pre-line;margin-bottom:16px}
+  #quiz-vraag img,#quiz-vraag svg{max-width:100%;white-space:normal}
+  #quiz-opties{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:14px}
+  .qopt{display:flex;align-items:center;gap:16px;border:none;border-radius:14px;padding:14px 20px;color:#fff;
+        font-size:clamp(17px,2.1vw,28px);text-align:left;min-height:0;box-shadow:0 4px 0 rgba(0,0,0,.2);transition:opacity .2s,transform .08s}
+  .qopt:hover{filter:brightness(1.07)}
+  .qopt:active{transform:translateY(2px)}
+  .qopt .ql{flex:none;width:1.9em;height:1.9em;border-radius:10px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:800}
+  .qopt .qt{flex:1;min-width:0;max-height:100%;overflow:auto;overflow-wrap:anywhere;white-space:pre-line}
+  .qopt .qt img{max-width:100%;max-height:30vh}
+  .qopt .qmark{flex:none;font-size:1.5em;font-weight:800}
+  .qopt.A{background:#d32f2f} .qopt.B{background:#1e63c6} .qopt.D{background:#2e8b1f}
+  .qopt.C{background:#f4c20d;color:#1c2733} .qopt.C .ql{background:rgba(0,0,0,.12)}
+  #quiz-opties.onthuld .qopt{cursor:default;transform:none;filter:none}
+  #quiz-opties.onthuld .qopt:not(.juist){opacity:.28}
+  #quiz-opties.onthuld .qopt.gekozen:not(.juist){opacity:.6}
+  #quiz-opties.onthuld .qopt.juist{box-shadow:0 0 0 5px #fff,0 0 0 10px var(--ok)}
+  #quiz-uitleg{flex:none;display:none;margin-top:16px;padding:12px 16px;border-radius:10px;font-size:18px;line-height:1.5;white-space:pre-line}
+  #quiz-uitleg.ok{display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
+  #quiz-uitleg.fout{display:block;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d}
+
+  #quiz-edit-grid{flex:1;min-height:0;display:grid;grid-template-columns:270px 1fr;gap:22px}
+  #quiz-lijst-kolom{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
+  #quiz-lijst{display:flex;flex-direction:column;gap:6px}
+  .qitem{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px}
+  .qitem:hover{border-color:var(--accent)}
+  .qitem.active{border-color:var(--accent);background:var(--accent-soft)}
+  .qitem .nr{font-weight:700;color:var(--muted);flex:none}
+  .qitem .tx{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .qitem button{flex:none;padding:2px 6px;font-size:12px}
+  #quiz-rechts{min-height:0;overflow:auto;padding-right:4px}
+  #quiz-rechts .veld{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  #quiz-rechts .veld:first-child{margin-top:0}
+  #quiz-rechts textarea,#quiz-rechts input[type=text]{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;resize:vertical}
+  #quiz-json{font:13px/1.4 ui-monospace,Consolas,monospace}
+  .qf-optie{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .qf-optie .sw{flex:none;width:32px;height:32px;border-radius:7px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .qf-optie .sw.A{background:#d32f2f} .qf-optie .sw.B{background:#1e63c6} .qf-optie .sw.C{background:#f4c20d;color:#1c2733} .qf-optie .sw.D{background:#2e8b1f}
+  .qf-optie label{flex:none;display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);cursor:pointer}
+  #qf-wiskunde{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0 2px}
+  #qf-wiskunde button{padding:3px 9px;font-size:14px;min-width:34px}
+  #qf-wiskunde .muted{font-size:12px;margin-left:6px}
+  #qf-preview{border:1px dashed var(--line);border-radius:10px;padding:12px}
+  #qf-preview .pv-vraag{font-size:17px;font-weight:600;white-space:pre-line;margin-bottom:10px}
+  #qf-preview .pv-opties{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #qf-preview .qopt{font-size:15px;padding:8px 12px;border-radius:10px;gap:10px;box-shadow:none;cursor:default}
+
   dialog{border:1px solid var(--line);border-radius:var(--r);padding:20px;min-width:320px}
   dialog::backdrop{background:rgba(20,30,50,.35)}
   dialog h3{margin:0 0 14px;font-size:17px}
@@ -265,6 +333,7 @@
     <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
     <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
+    <button onclick="toonQuiz()" title="Meerkeuzevragen tonen of maken">Quiz</button>
     <div id="hw-knoppen">
       <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
       <button onclick="toonStudiewijzer()" title="Studiewijzer van deze klas tonen">📅 Studiewijzer</button>
@@ -471,6 +540,65 @@
   </div>
   <div id="sw-voet">
     <button onclick="sluitStudiewijzer()">Sluiten</button>
+  </div>
+</div>
+
+<!-- ================= QUIZ (meerkeuze) ================= -->
+<div id="quiz-scherm">
+  <div id="quiz-kop">
+    <h2>Quiz</h2>
+    <span class="k" id="quiz-kop-info"></span>
+    <button id="quiz-modus" onclick="quizWissel()"></button>
+  </div>
+  <div id="quiz-body">
+    <div class="start-paneel" id="quiz-present">
+      <div id="quiz-label"></div>
+      <div id="quiz-vraag"></div>
+      <div id="quiz-opties"></div>
+      <div id="quiz-uitleg"></div>
+    </div>
+    <div class="start-paneel" id="quiz-edit">
+      <div id="quiz-edit-grid">
+        <div id="quiz-lijst-kolom">
+          <div id="quiz-lijst"></div>
+          <button onclick="quizNieuw()">+ Nieuwe vraag</button>
+          <button onclick="quizJsonPaneel()">{ } JSON plakken</button>
+        </div>
+        <div id="quiz-rechts">
+          <div id="quiz-form">
+            <label class="veld" for="qf-vraag">Vraag</label>
+            <textarea id="qf-vraag" rows="3"></textarea>
+            <div id="qf-wiskunde"></div>
+            <label class="veld">Antwoorden — vink het juiste antwoord aan</label>
+            <div id="qf-opties"></div>
+            <label class="veld" for="qf-uitleg">Uitleg na “Toon antwoord” (optioneel)</label>
+            <textarea id="qf-uitleg" rows="2"></textarea>
+            <label class="veld">Voorbeeld</label>
+            <div id="qf-preview"></div>
+          </div>
+          <div id="quiz-json-paneel">
+            <label class="veld" for="quiz-json">Plak hier vragen als JSON — bijvoorbeeld de output van Claude (zelfde formaat als gr_quiz.html)</label>
+            <textarea id="quiz-json" rows="16" spellcheck="false"
+              placeholder='[&#10;  {&#10;    "question": "Los op: $x^2 - 5x + 6 = 0$",&#10;    "options": {"A": "$x=2 \\vee x=3$", "B": "$x=-2 \\vee x=-3$", "C": "$x=1 \\vee x=6$", "D": "$x=5$"},&#10;    "correct": "A",&#10;    "feedback_correct": "Product 6, som −5 geeft (x−2)(x−3) = 0."&#10;  }&#10;]'></textarea>
+            <div class="row" style="margin-top:10px">
+              <button class="primary" onclick="quizLaadJson(false)">Toevoegen</button>
+              <button onclick="quizLaadJson(true)">Alles vervangen</button>
+              <button onclick="quizKopieerJson()" title="Alle vragen van deze les als JSON naar het klembord">Huidige vragen kopiëren</button>
+              <span id="quiz-json-melding" style="font-size:13px"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="quiz-voet">
+    <button onclick="sluitQuiz()">Sluiten</button>
+    <span class="alleen-present">
+      <button id="quiz-vorige" onclick="quizGa(-1)">‹ Vorige</button>
+      <button id="quiz-toon" class="primary" onclick="quizToonOfReset()">Toon antwoord</button>
+      <button id="quiz-volgende" onclick="quizGa(1)">Volgende ›</button>
+      <span id="quiz-teller"></span>
+    </span>
   </div>
 </div>
 
@@ -723,6 +851,7 @@ function sluitLes(){
   document.getElementById("start-scherm").classList.remove("open");
   document.getElementById("slot-scherm").classList.remove("open");
   document.getElementById("sw-scherm").classList.remove("open");
+  quizScherm.classList.remove("open");
   flushSave();
   stopTimer();
   document.getElementById("les").classList.remove("open");
@@ -1072,6 +1201,16 @@ document.addEventListener("paste", async e => {
   e.preventDefault();
   const blob = item.getAsFile();
   const act = document.activeElement;
+  // quiz open: afbeelding als <img> in het actieve vraag-/antwoordvak
+  if(quizScherm.classList.contains("open")){
+    if(act && act.closest("#quiz-form") && act.matches("textarea, input[type=text]")){
+      let url;
+      try{ url = await api.upload(blob); }
+      catch{ alert("Afbeelding uploaden mislukt."); return; }
+      quizInvoegen(act, `<img src="${url}">`);
+    }
+    return;
+  }
   // startscherm open: afspraken-vak of startopdracht
   if(document.getElementById("start-scherm").classList.contains("open")){
     if(act === document.getElementById("afspraken-zone")){
@@ -1441,6 +1580,341 @@ for(const _id of ["slotvragen","slotantwoorden"]){
     les.content[_id] = document.getElementById(_id).innerHTML;
     markDirty();
   });
+}
+
+/* ============ QUIZ (meerkeuze) ============ */
+// Zelfde vraagformaat als gr_quiz.html / de quiz-maken-skill:
+//   {label?, topic?, question, options:{A,B,C,D}, correct:"A", feedback_correct?, feedback_wrong?}
+// Opslag per les in les.content.quiz. Wiskunde tussen $…$ of \(…\), gerenderd met KaTeX.
+const QLETTERS = ["A","B","C","D"];
+const quizScherm = document.getElementById("quiz-scherm");
+let quizBewerk = false, quizIdx = 0, quizSel = 0;   // quizSel = -1: JSON-paneel
+let quizKeuze = null, quizOnthuld = false, quizVeld = null;
+
+function quizVragen(){ return les.content.quiz || (les.content.quiz = []); }
+
+function renderWiskunde(el){
+  if(!window.renderMathInElement) return;
+  try{
+    renderMathInElement(el, {throwOnError:false, delimiters:[
+      {left:"$$",right:"$$",display:true}, {left:"\\[",right:"\\]",display:true},
+      {left:"\\(",right:"\\)",display:false}, {left:"$",right:"$",display:false}]});
+  }catch{}
+}
+// KaTeX laadt met defer; staat de quiz al open, render dan alsnog
+window.addEventListener("load", () => { if(quizScherm.classList.contains("open")) renderQuiz(); });
+
+function alleenTekst(html){ return new DOMParser().parseFromString(html || "", "text/html").body.textContent.trim(); }
+
+// Eén vraag uit willekeurige (Claude-)invoer → vast formaat; null als het geen bruikbare vraag is.
+function normVraag(q){
+  if(!q || typeof q !== "object") return null;
+  const vraag = String(q.question ?? q.vraag ?? "");
+  let opts = q.options ?? q.opties ?? q.antwoorden ?? {};
+  if(Array.isArray(opts)) opts = Object.fromEntries(opts.slice(0,4).map((t,i) => [QLETTERS[i], t]));
+  const options = {};
+  for(const L of QLETTERS){
+    const t = opts[L] ?? opts[L.toLowerCase()];
+    if(t != null && String(t).trim() !== "") options[L] = String(t);
+  }
+  let c = q.correct ?? q.juist ?? q.answer ?? "";
+  if(typeof c === "number") c = QLETTERS[c] ?? "";
+  c = String(c).trim().toUpperCase();
+  if(!vraag.trim() || Object.keys(options).length < 2) return null;
+  return {label:String(q.label||""), topic:String(q.topic||""), question:vraag, options,
+          correct: options[c] !== undefined ? c : "",
+          feedback_correct:String(q.feedback_correct ?? q.uitleg ?? ""), feedback_wrong:String(q.feedback_wrong ?? "")};
+}
+
+// Accepteert: een array vragen, één vraag, {"1_1":[…], …} (STATIC_QS-stukje), met of zonder ```json-blok,
+// en ook JS-objectnotatie (sleutels zonder aanhalingstekens, komma aan het eind).
+function parseQuiz(tekst){
+  let t = tekst.trim();
+  const blok = t.match(/```[a-z]*\s*\n?([\s\S]*?)```/i);
+  if(blok) t = blok[1].trim();
+  t = t.replace(/[,;]\s*$/, "");
+  const pogingen = [t, "{" + t + "}", "[" + t + "]"];
+  let data;
+  for(const p of pogingen){ try{ data = JSON.parse(p); break; }catch{} }
+  if(data === undefined)
+    for(const p of pogingen){ try{ data = Function('"use strict";return (' + p + "\n)")(); break; }catch{} }
+  if(data === undefined) throw new Error("Kon de tekst niet lezen als JSON.");
+  const ruw = [];
+  (function verzamel(x){
+    if(Array.isArray(x)) x.forEach(verzamel);
+    else if(x && typeof x === "object"){
+      if("question" in x || "vraag" in x) ruw.push(x);
+      else Object.values(x).forEach(verzamel);
+    }
+  })(data);
+  const vragen = ruw.map(normVraag).filter(Boolean);
+  if(!vragen.length) throw new Error("Geen vragen gevonden (elke vraag heeft minstens “question” en twee “options” nodig).");
+  return vragen;
+}
+
+function toonQuiz(){
+  const vr = quizVragen();
+  document.getElementById("quiz-kop-info").textContent = `${les.klas_naam} · ${les.titel}`;
+  quizBewerk = !vr.length;
+  quizIdx = 0;
+  quizSel = vr.length ? 0 : -1;
+  quizScherm.classList.add("open");
+  renderQuiz();
+}
+
+function sluitQuiz(){
+  quizScherm.classList.remove("open");
+  flushSave();
+  requestAnimationFrame(resizeBoard);
+}
+
+function quizWissel(){
+  const vr = quizVragen();
+  if(quizBewerk && !vr.length) return;
+  quizBewerk = !quizBewerk;
+  if(quizBewerk) quizSel = vr.length ? Math.min(quizIdx, vr.length-1) : -1;
+  else quizIdx = Math.max(0, quizSel);
+  renderQuiz();
+}
+
+function renderQuiz(){
+  quizScherm.classList.toggle("bewerk", quizBewerk);
+  const m = document.getElementById("quiz-modus");
+  m.textContent = quizBewerk ? "▶ Presenteren" : "✎ Bewerken";
+  m.disabled = quizBewerk && !quizVragen().length;
+  if(quizBewerk) renderQuizBewerk(); else renderQuizVraag();
+}
+
+// --- presenteren ---
+function vulOpties(box, q, onKies){
+  box.innerHTML = "";
+  for(const L of QLETTERS){
+    if(!q.options[L]) continue;
+    const b = document.createElement(onKies ? "button" : "div");
+    b.className = "qopt " + L;
+    b.dataset.l = L;
+    b.innerHTML = `<span class="ql">${L}</span><span class="qt"></span><span class="qmark"></span>`;
+    b.querySelector(".qt").innerHTML = q.options[L];
+    if(onKies) b.onclick = () => onKies(L);
+    box.appendChild(b);
+  }
+  renderWiskunde(box);
+}
+
+function renderQuizVraag(){
+  const vr = quizVragen();
+  quizIdx = Math.min(Math.max(quizIdx, 0), vr.length - 1);
+  const q = vr[quizIdx];
+  quizKeuze = null; quizOnthuld = false;
+  document.getElementById("quiz-teller").textContent = `${quizIdx+1} / ${vr.length}`;
+  document.getElementById("quiz-vorige").disabled = quizIdx === 0;
+  document.getElementById("quiz-volgende").disabled = quizIdx === vr.length - 1;
+  document.getElementById("quiz-toon").textContent = "Toon antwoord";
+  document.getElementById("quiz-label").textContent = [q.label, q.topic].filter(Boolean).join(" · ");
+  const v = document.getElementById("quiz-vraag");
+  v.innerHTML = q.question;
+  renderWiskunde(v);
+  const box = document.getElementById("quiz-opties");
+  box.classList.remove("onthuld");
+  vulOpties(box, q, L => { if(!quizOnthuld){ quizKeuze = L; quizToon(); } });
+  const u = document.getElementById("quiz-uitleg");
+  u.className = ""; u.innerHTML = "";
+}
+
+function quizToon(){
+  const q = quizVragen()[quizIdx];
+  quizOnthuld = true;
+  const box = document.getElementById("quiz-opties");
+  box.classList.add("onthuld");
+  for(const b of box.children){
+    const L = b.dataset.l;
+    b.classList.toggle("juist", L === q.correct);
+    b.classList.toggle("gekozen", L === quizKeuze);
+    b.querySelector(".qmark").textContent = L === q.correct ? "✓" : L === quizKeuze ? "✕" : "";
+  }
+  const goed = !quizKeuze || quizKeuze === q.correct;
+  const uitleg = ((goed ? q.feedback_correct : q.feedback_wrong || q.feedback_correct) || "")
+    .replace(/^\s*(Goed!|Niet correct\.)\s*/i, "");
+  const kop = !quizKeuze ? (uitleg ? "Uitleg: " : "") : goed ? "Goed! " : "Helaas. ";
+  const u = document.getElementById("quiz-uitleg");
+  u.className = kop ? (goed ? "ok" : "fout") : "";
+  u.innerHTML = kop ? `<strong></strong> ${uitleg}` : "";
+  if(kop){ u.querySelector("strong").textContent = kop.trim(); renderWiskunde(u); }
+  document.getElementById("quiz-toon").textContent = "↺ Opnieuw";
+}
+
+function quizToonOfReset(){ if(quizOnthuld) renderQuizVraag(); else quizToon(); }
+function quizGa(d){ quizIdx += d; renderQuizVraag(); }
+
+document.addEventListener("keydown", e => {
+  if(!quizScherm.classList.contains("open")) return;
+  const inTekst = e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
+  if(inTekst || e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.key === "Escape"){ e.preventDefault(); sluitQuiz(); return; }
+  if(quizBewerk) return;
+  const k = e.key.toUpperCase();
+  const keuze = QLETTERS["1234".indexOf(e.key)] || (QLETTERS.includes(k) ? k : null);
+  if(e.key === "ArrowRight" || e.key === "PageDown"){ if(quizIdx < quizVragen().length-1) quizGa(1); }
+  else if(e.key === "ArrowLeft" || e.key === "PageUp"){ if(quizIdx > 0) quizGa(-1); }
+  else if(e.key === " " || e.key === "Enter") quizToonOfReset();
+  else if(keuze){ const b = document.querySelector(`#quiz-opties .qopt.${keuze}`); if(b) b.click(); }
+  else return;
+  e.preventDefault();
+}, true);
+
+// --- bewerken ---
+function renderQuizBewerk(){
+  const vr = quizVragen();
+  const lijst = document.getElementById("quiz-lijst");
+  lijst.innerHTML = "";
+  vr.forEach((q, i) => {
+    const d = document.createElement("div");
+    d.className = "qitem" + (i === quizSel ? " active" : "");
+    d.innerHTML = `<span class="nr">${i+1}.</span><span class="tx"></span><button class="icon-btn" title="Vraag verwijderen">🗑</button>`;
+    d.querySelector(".tx").textContent = alleenTekst(q.question) || "(lege vraag)";
+    renderWiskunde(d.querySelector(".tx"));
+    d.onclick = () => { quizSel = i; renderQuizBewerk(); };
+    d.querySelector("button").onclick = ev => {
+      ev.stopPropagation();
+      if(!confirm(`Vraag ${i+1} verwijderen?`)) return;
+      vr.splice(i, 1);
+      if(quizSel >= vr.length) quizSel = vr.length - 1;
+      markDirty(); renderQuiz();
+    };
+    lijst.appendChild(d);
+  });
+  if(!vr.length) lijst.innerHTML = `<div class="muted" style="font-size:14px;padding:4px 2px 8px">Nog geen vragen. Schrijf er zelf een of plak JSON.</div>`;
+  const json = quizSel < 0 || !vr.length;
+  document.getElementById("quiz-form").style.display = json ? "none" : "";
+  document.getElementById("quiz-json-paneel").style.display = json ? "" : "none";
+  if(!json) vulQuizForm(vr[quizSel]);
+}
+
+function vulQuizForm(q){
+  document.getElementById("qf-vraag").value = q.question;
+  document.getElementById("qf-uitleg").value = q.feedback_correct.replace(/^\s*Goed!\s*/i, "");
+  for(const L of QLETTERS){
+    document.querySelector(`#qf-opties input[type=text][data-l="${L}"]`).value = q.options[L] || "";
+    document.querySelector(`#qf-opties input[type=radio][value="${L}"]`).checked = q.correct === L;
+  }
+  renderQuizPreview();
+}
+
+function renderQuizPreview(){
+  const q = quizVragen()[quizSel];
+  const p = document.getElementById("qf-preview");
+  if(!q){ p.innerHTML = ""; return; }
+  p.innerHTML = `<div class="pv-vraag"></div><div class="pv-opties"></div>`;
+  p.firstChild.innerHTML = q.question || `<span class="muted">(vraag)</span>`;
+  renderWiskunde(p.firstChild);
+  vulOpties(p.lastChild, q, null);
+  const j = q.correct && p.querySelector(`.qopt.${q.correct}`);
+  if(j) j.querySelector(".qmark").textContent = "✓";
+}
+
+let quizPreviewTimer = null;
+function quizFormInvoer(){
+  const q = quizVragen()[quizSel];
+  if(!q) return;
+  q.question = document.getElementById("qf-vraag").value;
+  q.feedback_correct = document.getElementById("qf-uitleg").value;
+  for(const L of QLETTERS){
+    q.options[L] = document.querySelector(`#qf-opties input[type=text][data-l="${L}"]`).value;
+    if(document.querySelector(`#qf-opties input[type=radio][value="${L}"]`).checked) q.correct = L;
+  }
+  const tx = document.querySelector("#quiz-lijst .qitem.active .tx");
+  markDirty();
+  clearTimeout(quizPreviewTimer);
+  quizPreviewTimer = setTimeout(() => {
+    if(tx){ tx.textContent = alleenTekst(q.question) || "(lege vraag)"; renderWiskunde(tx); }
+    renderQuizPreview();
+  }, 250);
+}
+
+// formulier-onderdelen éénmalig opbouwen
+(function(){
+  const box = document.getElementById("qf-opties");
+  for(const L of QLETTERS){
+    const r = document.createElement("div");
+    r.className = "qf-optie";
+    r.innerHTML = `<span class="sw ${L}">${L}</span><input type="text" data-l="${L}" placeholder="Antwoord ${L}">
+      <label><input type="radio" name="qf-juist" value="${L}"> juist</label>`;
+    box.appendChild(r);
+  }
+  document.getElementById("quiz-form").addEventListener("input", quizFormInvoer);
+  document.getElementById("quiz-form").addEventListener("focusin", e => {
+    if(e.target.matches("textarea, input[type=text]")) quizVeld = e.target;
+  });
+
+  // knoppen die LaTeX invoegen; "|" = waar de cursor daarna staat
+  const knoppen = [["x²","^{2}|"],["xⁿ","^{|}"],["a/b","\\frac{|}{}"],["√","\\sqrt{|}"],["·","\\cdot |"],
+                   ["≤","\\le |"],["≥","\\ge |"],["≠","\\neq |"],["π","\\pi |"],["°","^\\circ |"],["∨","\\vee |"]];
+  const wk = document.getElementById("qf-wiskunde");
+  for(const [lbl, s] of knoppen){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = lbl; b.title = s.replace("|", "");
+    b.addEventListener("mousedown", e => e.preventDefault());   // focus in het tekstvak houden
+    b.onclick = () => quizWiskundeInvoegen(s);
+    wk.appendChild(b);
+  }
+  wk.insertAdjacentHTML("beforeend", `<span class="muted">Wiskunde tussen dollartekens: $x^2-4x+3$, $\\frac{1}{2}$, $\\sqrt{x}$ · plak een afbeelding met Ctrl+V</span>`);
+})();
+
+// Tekst invoegen op de cursor van een quiz-tekstvak; cursor komt op positie `cursor` binnen de tekst.
+function quizInvoegen(veld, tekst, cursor = tekst.length){
+  const a = veld.selectionStart, b = veld.selectionEnd;
+  veld.value = veld.value.slice(0, a) + tekst + veld.value.slice(b);
+  veld.focus();
+  veld.selectionStart = veld.selectionEnd = a + cursor;
+  veld.dispatchEvent(new Event("input", {bubbles:true}));
+}
+
+function quizWiskundeInvoegen(s){
+  const veld = quizVeld || document.getElementById("qf-vraag");
+  const voor = veld.value.slice(0, veld.selectionStart);
+  const inWiskunde = (voor.replace(/\\\$/g, "").match(/\$/g) || []).length % 2 === 1;
+  let t = s.replace("|", ""), c = s.indexOf("|");
+  if(!inWiskunde){ t = "$" + t + "$"; c += 1; }
+  quizInvoegen(veld, t, c);
+}
+
+function quizNieuw(){
+  const vr = quizVragen();
+  vr.push({label:"", topic:"", question:"", options:{A:"",B:"",C:"",D:""}, correct:"A", feedback_correct:"", feedback_wrong:""});
+  quizSel = vr.length - 1;
+  markDirty(); renderQuiz();
+  document.getElementById("qf-vraag").focus();
+}
+
+function quizJsonPaneel(){
+  quizSel = -1;
+  document.getElementById("quiz-json-melding").textContent = "";
+  renderQuizBewerk();
+  document.getElementById("quiz-json").focus();
+}
+
+function quizLaadJson(vervang){
+  const ta = document.getElementById("quiz-json"), meld = document.getElementById("quiz-json-melding");
+  const vr = quizVragen();
+  let nieuw;
+  try{ nieuw = parseQuiz(ta.value); }
+  catch(err){ meld.style.color = "var(--warn)"; meld.textContent = err.message; return; }
+  if(vervang && vr.length && !confirm(`De ${vr.length} bestaande vraag/vragen vervangen door ${nieuw.length} nieuwe?`)) return;
+  const start = vervang ? 0 : vr.length;
+  if(vervang) vr.length = 0;
+  vr.push(...nieuw);
+  ta.value = "";
+  markDirty();
+  // meteen presenteren vanaf de eerste nieuwe vraag
+  quizBewerk = false; quizIdx = start;
+  renderQuiz();
+}
+
+async function quizKopieerJson(){
+  const meld = document.getElementById("quiz-json-melding");
+  const tekst = JSON.stringify(quizVragen(), null, 2);
+  try{ await navigator.clipboard.writeText(tekst); meld.style.color = "var(--ok)"; meld.textContent = "✓ Gekopieerd"; }
+  catch{ document.getElementById("quiz-json").value = tekst; meld.style.color = ""; meld.textContent = "Kopiëren lukte niet — de JSON staat nu in het tekstvak."; }
 }
 
 /* ============ STUDIEWIJZER (één afbeelding per klas) ============ */
