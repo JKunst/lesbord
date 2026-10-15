@@ -255,21 +255,22 @@
   #quiz-label{flex:none;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;min-height:1em}
   #quiz-vraag{flex:none;max-height:45%;overflow:auto;font-size:clamp(19px,2.3vw,30px);line-height:1.45;font-weight:600;white-space:pre-line;margin-bottom:16px}
   #quiz-vraag img,#quiz-vraag svg{max-width:100%;white-space:normal}
-  #quiz-opties{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:14px}
-  .qopt{display:flex;align-items:center;gap:16px;border:none;border-radius:14px;padding:14px 20px;color:#fff;
-        font-size:clamp(17px,2.1vw,28px);text-align:left;min-height:0;box-shadow:0 4px 0 rgba(0,0,0,.2);transition:opacity .2s,transform .08s}
-  .qopt:hover{filter:brightness(1.07)}
-  .qopt:active{transform:translateY(2px)}
-  .qopt .ql{flex:none;width:1.9em;height:1.9em;border-radius:10px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:800}
-  .qopt .qt{flex:1;min-width:0;max-height:100%;overflow:auto;overflow-wrap:anywhere;white-space:pre-line}
+  /* antwoorden: wit vak met een rand + letterblokje in de kleur van de letter */
+  #quiz-opties{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:12px;padding:8px}
+  .qopt{--qc:#888;--qz:#f5f5f5;display:flex;align-items:center;gap:14px;border:3px solid var(--qc);border-radius:12px;padding:12px 16px;
+        background:#fff;color:var(--ink);font-size:clamp(16px,1.7vw,24px);text-align:left;min-height:3.4em;transition:opacity .2s,background .12s}
+  .qopt:hover{border-color:var(--qc);background:var(--qz)}
+  .qopt .ql{flex:none;width:1.7em;height:1.7em;border-radius:8px;background:var(--qc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9em}
+  .qopt .qt{flex:1;min-width:0;overflow-wrap:anywhere;white-space:pre-line}
   .qopt .qt img{max-width:100%;max-height:30vh}
-  .qopt .qmark{flex:none;font-size:1.5em;font-weight:800}
-  .qopt.A{background:#d32f2f} .qopt.B{background:#1e63c6} .qopt.D{background:#2e8b1f}
-  .qopt.C{background:#f4c20d;color:#1c2733} .qopt.C .ql{background:rgba(0,0,0,.12)}
-  #quiz-opties.onthuld .qopt{cursor:default;transform:none;filter:none}
-  #quiz-opties.onthuld .qopt:not(.juist){opacity:.28}
-  #quiz-opties.onthuld .qopt.gekozen:not(.juist){opacity:.6}
-  #quiz-opties.onthuld .qopt.juist{box-shadow:0 0 0 5px #fff,0 0 0 10px var(--ok)}
+  .qopt .qmark{flex:none;font-size:1.4em;font-weight:800}
+  .qopt.A{--qc:#d9534f;--qz:#fdf1f0} .qopt.B{--qc:#3b78c9;--qz:#eef4fc}
+  .qopt.C{--qc:#e0a800;--qz:#fdf8e6} .qopt.D{--qc:#3f9a4e;--qz:#eff8f0}
+  #quiz-opties.onthuld .qopt{cursor:default}
+  #quiz-opties.onthuld .qopt:not(.juist){opacity:.35;background:#fff}
+  #quiz-opties.onthuld .qopt.gekozen:not(.juist){opacity:.7}
+  #quiz-opties.onthuld .qopt.juist{background:#eefaf0;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--ok)}
+  .qopt.juist .qmark{color:var(--ok)} .qopt.gekozen:not(.juist) .qmark{color:var(--warn)}
   #quiz-uitleg{flex:none;display:none;margin-top:16px;padding:12px 16px;border-radius:10px;font-size:18px;line-height:1.5;white-space:pre-line}
   #quiz-uitleg.ok{display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
   #quiz-uitleg.fout{display:block;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d}
@@ -290,7 +291,7 @@
   #quiz-json{font:13px/1.4 ui-monospace,Consolas,monospace}
   .qf-optie{display:flex;align-items:center;gap:8px;margin-bottom:6px}
   .qf-optie .sw{flex:none;width:32px;height:32px;border-radius:7px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
-  .qf-optie .sw.A{background:#d32f2f} .qf-optie .sw.B{background:#1e63c6} .qf-optie .sw.C{background:#f4c20d;color:#1c2733} .qf-optie .sw.D{background:#2e8b1f}
+  .qf-optie .sw.A{background:#d9534f} .qf-optie .sw.B{background:#3b78c9} .qf-optie .sw.C{background:#e0a800} .qf-optie .sw.D{background:#3f9a4e}
   .qf-optie label{flex:none;display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);cursor:pointer}
   #qf-wiskunde{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0 2px}
   #qf-wiskunde button{padding:3px 9px;font-size:14px;min-width:34px}
@@ -298,7 +299,7 @@
   #qf-preview{border:1px dashed var(--line);border-radius:10px;padding:12px}
   #qf-preview .pv-vraag{font-size:17px;font-weight:600;white-space:pre-line;margin-bottom:10px}
   #qf-preview .pv-opties{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  #qf-preview .qopt{font-size:15px;padding:8px 12px;border-radius:10px;gap:10px;box-shadow:none;cursor:default}
+  #qf-preview .qopt{font-size:15px;padding:6px 10px;border-width:2px;border-radius:10px;gap:10px;min-height:0;cursor:default}
 
   dialog{border:1px solid var(--line);border-radius:var(--r);padding:20px;min-width:320px}
   dialog::backdrop{background:rgba(20,30,50,.35)}
