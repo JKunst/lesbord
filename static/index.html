@@ -270,6 +270,7 @@
   #quiz-opties.onthuld .qopt:not(.juist){opacity:.35;background:#fff}
   #quiz-opties.onthuld .qopt.gekozen:not(.juist){opacity:.7}
   #quiz-opties.onthuld .qopt.juist{background:#eefaf0;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--ok)}
+  #quiz-opties.fout .qopt.gekozen{opacity:.7;background:#fff}
   .qopt.juist .qmark{color:var(--ok)} .qopt.gekozen:not(.juist) .qmark{color:var(--warn)}
   #quiz-uitleg{flex:none;display:none;margin-top:16px;padding:12px 16px;border-radius:10px;font-size:18px;line-height:1.5;white-space:pre-line}
   #quiz-uitleg.ok{display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
@@ -1716,16 +1717,43 @@ function renderQuizVraag(){
   v.innerHTML = q.question;
   renderWiskunde(v);
   const box = document.getElementById("quiz-opties");
-  box.classList.remove("onthuld");
-  vulOpties(box, q, L => { if(!quizOnthuld){ quizKeuze = L; quizToon(); } });
+  box.classList.remove("onthuld", "fout");
+  vulOpties(box, q, L => {
+    if(quizOnthuld) return;
+    quizKeuze = L;
+    if(L === q.correct) quizToon(); else quizFout();
+  });
+  zetQuizUitleg("", "", "");
+}
+
+function zetQuizUitleg(klasse, kop, uitleg){
   const u = document.getElementById("quiz-uitleg");
-  u.className = ""; u.innerHTML = "";
+  u.className = kop ? klasse : "";
+  u.innerHTML = kop ? `<strong></strong> ${uitleg}` : "";
+  if(kop){ u.querySelector("strong").textContent = kop; renderWiskunde(u); }
+}
+
+function zonderKop(t){ return (t || "").replace(/^\s*(Goed!|Niet correct\.)\s*/i, ""); }
+
+// fout antwoord gekozen: alleen de keuze afstrepen en de toelichting tonen, het juiste antwoord nog niet
+function quizFout(){
+  const q = quizVragen()[quizIdx];
+  const box = document.getElementById("quiz-opties");
+  box.classList.add("fout");
+  for(const b of box.children){
+    const L = b.dataset.l;
+    b.classList.toggle("gekozen", L === quizKeuze);
+    b.querySelector(".qmark").textContent = L === quizKeuze ? "✕" : "";
+  }
+  zetQuizUitleg("fout", "Helaas.", zonderKop(q.feedback_wrong));
+  document.getElementById("quiz-toon").textContent = "Toon juiste";
 }
 
 function quizToon(){
   const q = quizVragen()[quizIdx];
   quizOnthuld = true;
   const box = document.getElementById("quiz-opties");
+  box.classList.remove("fout");
   box.classList.add("onthuld");
   for(const b of box.children){
     const L = b.dataset.l;
@@ -1733,14 +1761,9 @@ function quizToon(){
     b.classList.toggle("gekozen", L === quizKeuze);
     b.querySelector(".qmark").textContent = L === q.correct ? "✓" : L === quizKeuze ? "✕" : "";
   }
-  const goed = !quizKeuze || quizKeuze === q.correct;
-  const uitleg = ((goed ? q.feedback_correct : q.feedback_wrong || q.feedback_correct) || "")
-    .replace(/^\s*(Goed!|Niet correct\.)\s*/i, "");
-  const kop = !quizKeuze ? (uitleg ? "Uitleg: " : "") : goed ? "Goed! " : "Helaas. ";
-  const u = document.getElementById("quiz-uitleg");
-  u.className = kop ? (goed ? "ok" : "fout") : "";
-  u.innerHTML = kop ? `<strong></strong> ${uitleg}` : "";
-  if(kop){ u.querySelector("strong").textContent = kop.trim(); renderWiskunde(u); }
+  const uitleg = zonderKop(q.feedback_correct);
+  if(quizKeuze === q.correct) zetQuizUitleg("ok", "Goed!", uitleg);
+  else zetQuizUitleg("ok", uitleg ? "Uitleg:" : "", uitleg);
   document.getElementById("quiz-toon").textContent = "↺ Opnieuw";
 }
 
