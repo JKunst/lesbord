@@ -273,11 +273,21 @@
   #quiz-opties.fout .qopt.gekozen{opacity:.7;background:#fff}
   .qopt.juist .qmark{color:var(--ok)} .qopt.gekozen:not(.juist) .qmark{color:var(--warn)}
   /* open vraag: modelantwoord verschijnt pas na 'Toon antwoord' */
-  .qantw{grid-column:1/-1;border:3px dashed var(--line);border-radius:12px;padding:14px 18px;background:#fff;color:var(--muted);
-         font-size:clamp(16px,1.7vw,24px);white-space:pre-line;min-height:3.4em;display:flex;align-items:center}
-  .qantw.zichtbaar{border-style:solid;border-color:var(--ok);background:#eefaf0;color:var(--ink);display:block}
-  .qantw .kop{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:6px;font-weight:700}
+  #quiz-opties.open-vraag{display:block}
+  .qantw{border:2px dashed var(--line);border-radius:12px;padding:14px 20px;background:#fff;color:var(--muted);
+         font-size:clamp(16px,1.6vw,22px);line-height:1.55;white-space:pre-line}
+  .qantw.zichtbaar{border:2px solid #9fd5aa;border-left:6px solid var(--ok);background:#f3fbf4;color:var(--ink)}
+  .qantw .kop{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:8px;font-weight:700}
   .qantw img{max-width:100%;max-height:30vh}
+  .qantw .deel + .deel{border-top:1px dashed #b9dfc0;padding-top:.55em;margin-top:.55em}
+  /* deelvragen a, b, … : letter in een blokje, tekst ingesprongen */
+  .deel{display:flex;gap:.6em;align-items:flex-start;margin-top:.4em}
+  .deel .dl{flex:none;width:1.45em;height:1.45em;margin-top:.08em;border-radius:6px;background:var(--accent-soft);color:var(--accent);
+            font-weight:700;font-size:.82em;display:flex;align-items:center;justify-content:center}
+  .qantw .deel .dl{background:#d7f0dc;color:#1f6b2e}
+  .deel .dt{flex:1;min-width:0}
+  #quiz-vraag .deel .dt{font-weight:500}
+  #quiz-vraag.lang{font-size:clamp(17px,1.75vw,24px)}
   #qf-type{display:flex;gap:16px;font-size:14px;margin-bottom:4px}
   #qf-type label{display:flex;align-items:center;gap:5px;cursor:pointer}
   #quiz-uitleg{flex:none;display:none;margin-top:16px;padding:12px 16px;border-radius:10px;font-size:18px;line-height:1.5;white-space:pre-line}
@@ -1625,6 +1635,25 @@ function renderWiskunde(el){
 // KaTeX laadt met defer; staat de quiz al open, render dan alsnog
 window.addEventListener("load", () => { if(quizScherm.classList.contains("open")) renderQuiz(); });
 
+// Regels die met "a ", "b ", … (of "a)", "a.") beginnen worden deelvragen met een letterblokje;
+// volgende regels zonder letter horen bij die deelvraag. Alleen als er een reeks a, b, … in staat.
+function deelvragen(html){
+  const regels = String(html || "").split(/\r?\n/);
+  const re = /^\s*([a-h])[).]?\s+(?![=<>+\-·*\/])(.*)$/;
+  const delen = [], intro = [];
+  for(const r of regels){
+    const m = r.match(re);
+    if(m && m[1].charCodeAt(0) - 97 === delen.length) delen.push({l:m[1], t:[m[2]]});
+    else if(delen.length) delen[delen.length-1].t.push(r);
+    else intro.push(r);
+  }
+  if(delen.length < 2) return html;
+  const NL = String.fromCharCode(10);
+  const tekst = intro.join(NL).trim();
+  return (tekst ? `<div class="intro">${tekst}</div>` : "") +
+    delen.map(d => `<div class="deel"><span class="dl">${d.l}</span><div class="dt">${d.t.join(NL).trim()}</div></div>`).join("");
+}
+
 function alleenTekst(html){ return new DOMParser().parseFromString(html || "", "text/html").body.textContent.trim(); }
 
 // Eén vraag uit willekeurige (Claude-)invoer → vast formaat; null als het geen bruikbare vraag is.
@@ -1740,10 +1769,12 @@ function renderQuizVraag(){
   document.getElementById("quiz-toon").textContent = "Toon antwoord";
   document.getElementById("quiz-label").textContent = [q.label, q.topic].filter(Boolean).join(" · ");
   const v = document.getElementById("quiz-vraag");
-  v.innerHTML = q.question;
+  v.innerHTML = deelvragen(q.question);
+  v.classList.toggle("lang", alleenTekst(q.question).length > 160);
   renderWiskunde(v);
   const box = document.getElementById("quiz-opties");
   box.classList.remove("onthuld", "fout");
+  box.classList.toggle("open-vraag", q.type === "open");
   if(q.type === "open"){
     box.innerHTML = `<div class="qantw">Denk na en schrijf je antwoord op…</div>`;
     zetQuizUitleg("", "", "");
@@ -1783,7 +1814,7 @@ function quizFout(){
 function vulModelantwoord(el, q){
   el.className = "qantw zichtbaar";
   el.innerHTML = `<span class="kop">Antwoord</span><div></div>`;
-  el.lastChild.innerHTML = q.answer || `<span class="muted">(geen modelantwoord)</span>`;
+  el.lastChild.innerHTML = q.answer ? deelvragen(q.answer) : `<span class="muted">(geen modelantwoord)</span>`;
   renderWiskunde(el);
 }
 
@@ -1880,9 +1911,9 @@ function renderQuizPreview(){
   const p = document.getElementById("qf-preview");
   if(!q){ p.innerHTML = ""; return; }
   p.innerHTML = `<div class="pv-vraag"></div><div class="pv-opties"></div>`;
-  p.firstChild.innerHTML = q.question || `<span class="muted">(vraag)</span>`;
+  p.firstChild.innerHTML = q.question ? deelvragen(q.question) : `<span class="muted">(vraag)</span>`;
   renderWiskunde(p.firstChild);
-  if(q.type === "open"){ p.lastChild.innerHTML = `<div></div>`; vulModelantwoord(p.lastChild.firstChild, q); return; }
+  if(q.type === "open"){ p.lastChild.style.display = "block"; p.lastChild.innerHTML = `<div></div>`; vulModelantwoord(p.lastChild.firstChild, q); return; }
   vulOpties(p.lastChild, q, null);
   const j = q.correct && p.querySelector(`.qopt.${q.correct}`);
   if(j) j.querySelector(".qmark").textContent = "✓";
