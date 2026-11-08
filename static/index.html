@@ -272,6 +272,14 @@
   #quiz-opties.onthuld .qopt.juist{background:#eefaf0;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--ok)}
   #quiz-opties.fout .qopt.gekozen{opacity:.7;background:#fff}
   .qopt.juist .qmark{color:var(--ok)} .qopt.gekozen:not(.juist) .qmark{color:var(--warn)}
+  /* open vraag: modelantwoord verschijnt pas na 'Toon antwoord' */
+  .qantw{grid-column:1/-1;border:3px dashed var(--line);border-radius:12px;padding:14px 18px;background:#fff;color:var(--muted);
+         font-size:clamp(16px,1.7vw,24px);white-space:pre-line;min-height:3.4em;display:flex;align-items:center}
+  .qantw.zichtbaar{border-style:solid;border-color:var(--ok);background:#eefaf0;color:var(--ink);display:block}
+  .qantw .kop{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ok);margin-bottom:6px;font-weight:700}
+  .qantw img{max-width:100%;max-height:30vh}
+  #qf-type{display:flex;gap:16px;font-size:14px;margin-bottom:4px}
+  #qf-type label{display:flex;align-items:center;gap:5px;cursor:pointer}
   #quiz-uitleg{flex:none;display:none;margin-top:16px;padding:12px 16px;border-radius:10px;font-size:18px;line-height:1.5;white-space:pre-line}
   #quiz-uitleg.ok{display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
   #quiz-uitleg.fout{display:block;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d}
@@ -335,7 +343,7 @@
     <button onclick="sluitLes()" title="Terug naar overzicht">‹ Overzicht</button>
     <button onclick="toonStart()" title="Startscherm tonen">Start</button>
     <button onclick="toonSlot()" title="Vragen en antwoorden voor het einde van de les">Slot</button>
-    <button onclick="toonQuiz()" title="Meerkeuzevragen tonen of maken">Quiz</button>
+    <button onclick="toonQuiz()" title="Quizvragen (meerkeuze of open) tonen of maken">Quiz</button>
     <div id="hw-knoppen">
       <button onclick="window.open('huiswerk/','_blank','noopener')" title="Huiswerkcontrole openen">📋 Huiswerk</button>
       <button onclick="toonStudiewijzer()" title="Studiewijzer van deze klas tonen">📅 Studiewijzer</button>
@@ -568,11 +576,21 @@
         </div>
         <div id="quiz-rechts">
           <div id="quiz-form">
+            <div id="qf-type">
+              <label><input type="radio" name="qf-type" value="mc"> Meerkeuze</label>
+              <label><input type="radio" name="qf-type" value="open"> Open vraag</label>
+            </div>
             <label class="veld" for="qf-vraag">Vraag</label>
             <textarea id="qf-vraag" rows="3"></textarea>
             <div id="qf-wiskunde"></div>
-            <label class="veld">Antwoorden — vink het juiste antwoord aan</label>
-            <div id="qf-opties"></div>
+            <div id="qf-mc">
+              <label class="veld">Antwoorden — vink het juiste antwoord aan</label>
+              <div id="qf-opties"></div>
+            </div>
+            <div id="qf-open">
+              <label class="veld" for="qf-antwoord">Modelantwoord (verborgen tot “Toon antwoord”)</label>
+              <textarea id="qf-antwoord" rows="3"></textarea>
+            </div>
             <label class="veld" for="qf-uitleg">Uitleg na “Toon antwoord” (optioneel)</label>
             <textarea id="qf-uitleg" rows="2"></textarea>
             <label class="veld">Voorbeeld</label>
@@ -1584,9 +1602,10 @@ for(const _id of ["slotvragen","slotantwoorden"]){
   });
 }
 
-/* ============ QUIZ (meerkeuze) ============ */
+/* ============ QUIZ (meerkeuze + open) ============ */
 // Zelfde vraagformaat als gr_quiz.html / de quiz-maken-skill:
-//   {label?, topic?, question, options:{A,B,C,D}, correct:"A", feedback_correct?, feedback_wrong?}
+//   meerkeuze: {label?, topic?, question, options:{A,B,C,D}, correct:"A", feedback_correct?, feedback_wrong?}
+//   open:      {type:"open", label?, topic?, question, answer, feedback_correct?}
 // Opslag per les in les.content.quiz. Wiskunde tussen $…$ of \(…\), gerenderd met KaTeX.
 const QLETTERS = ["A","B","C","D"];
 const quizScherm = document.getElementById("quiz-scherm");
@@ -1612,6 +1631,13 @@ function alleenTekst(html){ return new DOMParser().parseFromString(html || "", "
 function normVraag(q){
   if(!q || typeof q !== "object") return null;
   const vraag = String(q.question ?? q.vraag ?? "");
+  const basis = {label:String(q.label||""), topic:String(q.topic||""), question:vraag};
+  const antw = q.answer ?? q.antwoord ?? q.modelantwoord;
+  const geenOpties = !(q.options ?? q.opties ?? q.antwoorden);
+  if(String(q.type||"").toLowerCase() === "open" || (geenOpties && typeof antw === "string")){
+    if(!vraag.trim()) return null;
+    return {type:"open", ...basis, answer:String(antw ?? ""), feedback_correct:String(q.feedback_correct ?? q.uitleg ?? "")};
+  }
   let opts = q.options ?? q.opties ?? q.antwoorden ?? {};
   if(Array.isArray(opts)) opts = Object.fromEntries(opts.slice(0,4).map((t,i) => [QLETTERS[i], t]));
   const options = {};
@@ -1623,7 +1649,7 @@ function normVraag(q){
   if(typeof c === "number") c = QLETTERS[c] ?? "";
   c = String(c).trim().toUpperCase();
   if(!vraag.trim() || Object.keys(options).length < 2) return null;
-  return {label:String(q.label||""), topic:String(q.topic||""), question:vraag, options,
+  return {...basis, options,
           correct: options[c] !== undefined ? c : "",
           feedback_correct:String(q.feedback_correct ?? q.uitleg ?? ""), feedback_wrong:String(q.feedback_wrong ?? "")};
 }
@@ -1650,7 +1676,7 @@ function parseQuiz(tekst){
     }
   })(data);
   const vragen = ruw.map(normVraag).filter(Boolean);
-  if(!vragen.length) throw new Error("Geen vragen gevonden (elke vraag heeft minstens “question” en twee “options” nodig).");
+  if(!vragen.length) throw new Error("Geen vragen gevonden (elke vraag heeft “question” nodig, plus twee “options” of bij een open vraag “type”: “open” en “answer”).");
   return vragen;
 }
 
@@ -1718,6 +1744,11 @@ function renderQuizVraag(){
   renderWiskunde(v);
   const box = document.getElementById("quiz-opties");
   box.classList.remove("onthuld", "fout");
+  if(q.type === "open"){
+    box.innerHTML = `<div class="qantw">Denk na en schrijf je antwoord op…</div>`;
+    zetQuizUitleg("", "", "");
+    return;
+  }
   vulOpties(box, q, L => {
     if(quizOnthuld) return;
     quizKeuze = L;
@@ -1749,10 +1780,24 @@ function quizFout(){
   document.getElementById("quiz-toon").textContent = "Toon juiste";
 }
 
+function vulModelantwoord(el, q){
+  el.className = "qantw zichtbaar";
+  el.innerHTML = `<span class="kop">Antwoord</span><div></div>`;
+  el.lastChild.innerHTML = q.answer || `<span class="muted">(geen modelantwoord)</span>`;
+  renderWiskunde(el);
+}
+
 function quizToon(){
   const q = quizVragen()[quizIdx];
   quizOnthuld = true;
   const box = document.getElementById("quiz-opties");
+  if(q.type === "open"){
+    vulModelantwoord(box.firstChild, q);
+    const uitleg = zonderKop(q.feedback_correct);
+    zetQuizUitleg("ok", uitleg ? "Uitleg:" : "", uitleg);
+    document.getElementById("quiz-toon").textContent = "↺ Verberg";
+    return;
+  }
   box.classList.remove("fout");
   box.classList.add("onthuld");
   for(const b of box.children){
@@ -1815,10 +1860,16 @@ function renderQuizBewerk(){
 }
 
 function vulQuizForm(q){
+  const open = q.type === "open";
+  document.querySelector(`#qf-type input[value="${open ? "open" : "mc"}"]`).checked = true;
+  document.getElementById("qf-mc").style.display = open ? "none" : "";
+  document.getElementById("qf-open").style.display = open ? "" : "none";
   document.getElementById("qf-vraag").value = q.question;
-  document.getElementById("qf-uitleg").value = q.feedback_correct.replace(/^\s*Goed!\s*/i, "");
+  document.getElementById("qf-antwoord").value = q.answer || "";
+  document.getElementById("qf-uitleg").value = (q.feedback_correct || "").replace(/^\s*Goed!\s*/i, "");
+  const opts = q.options || {};
   for(const L of QLETTERS){
-    document.querySelector(`#qf-opties input[type=text][data-l="${L}"]`).value = q.options[L] || "";
+    document.querySelector(`#qf-opties input[type=text][data-l="${L}"]`).value = opts[L] || "";
     document.querySelector(`#qf-opties input[type=radio][value="${L}"]`).checked = q.correct === L;
   }
   renderQuizPreview();
@@ -1831,6 +1882,7 @@ function renderQuizPreview(){
   p.innerHTML = `<div class="pv-vraag"></div><div class="pv-opties"></div>`;
   p.firstChild.innerHTML = q.question || `<span class="muted">(vraag)</span>`;
   renderWiskunde(p.firstChild);
+  if(q.type === "open"){ p.lastChild.innerHTML = `<div></div>`; vulModelantwoord(p.lastChild.firstChild, q); return; }
   vulOpties(p.lastChild, q, null);
   const j = q.correct && p.querySelector(`.qopt.${q.correct}`);
   if(j) j.querySelector(".qmark").textContent = "✓";
@@ -1840,8 +1892,16 @@ let quizPreviewTimer = null;
 function quizFormInvoer(){
   const q = quizVragen()[quizSel];
   if(!q) return;
+  const open = document.querySelector(`#qf-type input[value="open"]`).checked;
+  if(open !== (q.type === "open")){            // type gewisseld: velden van het andere type bewaren we gewoon
+    if(open) q.type = "open"; else delete q.type;
+    q.options ||= {A:"",B:"",C:"",D:""}; q.correct ||= "A"; q.answer ??= ""; q.feedback_wrong ??= "";
+    vulQuizForm(q);
+  }
   q.question = document.getElementById("qf-vraag").value;
   q.feedback_correct = document.getElementById("qf-uitleg").value;
+  q.answer = document.getElementById("qf-antwoord").value;
+  q.options ||= {};
   for(const L of QLETTERS){
     q.options[L] = document.querySelector(`#qf-opties input[type=text][data-l="${L}"]`).value;
     if(document.querySelector(`#qf-opties input[type=radio][value="${L}"]`).checked) q.correct = L;
