@@ -253,10 +253,10 @@
   #quiz-teller{color:#fff;font-size:15px;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
 
   #quiz-label{flex:none;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px;min-height:1em}
-  #quiz-vraag{flex:none;max-height:45%;overflow:auto;font-size:clamp(19px,2.3vw,30px);line-height:1.45;font-weight:600;white-space:pre-line;margin-bottom:16px}
+  #quiz-vraag{flex:1 1 auto;min-height:0;overflow:auto;font-size:clamp(19px,2.3vw,30px);line-height:1.45;font-weight:600;white-space:pre-line;margin-bottom:16px}
   #quiz-vraag img,#quiz-vraag svg{max-width:100%;white-space:normal}
   /* antwoorden: wit vak met een rand + letterblokje in de kleur van de letter */
-  #quiz-opties{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:12px;padding:8px}
+  #quiz-opties{flex:none;max-height:50%;overflow:auto;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:12px;padding:8px}
   .qopt{--qc:#888;--qz:#f5f5f5;display:flex;align-items:center;gap:14px;border:3px solid var(--qc);border-radius:12px;padding:12px 16px;
         background:#fff;color:var(--ink);font-size:clamp(16px,1.7vw,24px);text-align:left;min-height:3.4em;transition:opacity .2s,background .12s}
   .qopt:hover{border-color:var(--qc);background:var(--qz)}
